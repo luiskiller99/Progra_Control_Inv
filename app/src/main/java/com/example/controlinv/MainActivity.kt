@@ -3,6 +3,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,10 +48,16 @@ data class Inventario(
     val extra1: String? = null,
     val extra2: String? = null
 )
+enum class Pantalla {
+    INVENTARIO,
+    PEDIDOS
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            var pantalla by remember { mutableStateOf(Pantalla.INVENTARIO) }
 
             val loginVM: LoginViewModel = viewModel()
 
@@ -61,8 +70,27 @@ class MainActivity : ComponentActivity() {
                 }
 
                 is EstadoLogin.Admin -> {
-                    InventarioScreen()
+
+                    when (pantalla) {
+
+                        Pantalla.INVENTARIO -> {
+                            InventarioScreen(
+                                onVerPedidos = {
+                                    pantalla = Pantalla.PEDIDOS
+                                }
+                            )
+                        }
+
+                        Pantalla.PEDIDOS -> {
+                            PedidosAdminScreen(
+                                onBack = {
+                                    pantalla = Pantalla.INVENTARIO
+                                }
+                            )
+                        }
+                    }
                 }
+
 
                 is EstadoLogin.Empleado -> {
                     PedidoEmpleadoScreen()
@@ -111,6 +139,83 @@ suspend fun eliminarInventario(id: String) {
         }
 
 }
+/*
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PedidosAdminScreen(
+    viewModel: PedidoAdminViewModel = viewModel(),
+    onBack: () -> Unit,
+    onPedidoClick: (Pedido) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Pedidos") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        if (viewModel.cargando) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
+
+        if (viewModel.pedidos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay pedidos")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                items(viewModel.pedidos, key = { it.id }) { pedido ->
+                    PedidoItem(
+                        pedido = pedido,
+                        onClick = { onPedidoClick(pedido) }
+                    )
+                    Divider()
+                }
+            }
+        }
+    }
+}*/
+@Composable
+fun PedidoItem(
+    pedido: Pedido,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Empleado: ${pedido.empleado_id}",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = "Estado: ${pedido.estado}",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = "Fecha: ${pedido.created_at}",
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
 @Composable
 fun PedidoEmpleadoScreen(
    // viewModel: PedidoViewModel = viewModel()
@@ -209,20 +314,49 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 }
 /**IMPORTANTE*/
 @Composable
+/**fun InventarioScreen(
+    viewModel: InventarioViewModel = viewModel(),
+    onVerPedidos: (() -> Unit)? = null
+) */
 fun InventarioScreen(
-    viewModel: InventarioViewModel = viewModel()
-) {
+    viewModel: InventarioViewModel = viewModel(),
+    onVerPedidos: () -> Unit
+)
+{
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
 
-    if (viewModel.cargando) {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-    }
+    Scaffold(
+        floatingActionButton = {
+            Column {
+                FloatingActionButton(
+                    onClick = onVerPedidos
+                ) {
+                    Text("Pedidos")
+                }
 
-    Box(Modifier.fillMaxSize()) {
+                Spacer(Modifier.height(12.dp))
 
-        Column {
+                FloatingActionButton(
+                    onClick = { creando = true }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Agregar")
+                }
+            }
+        }
+    ) { padding ->
+
+
+    Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+
+            if (viewModel.cargando) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
 
             BuscadorInventario(viewModel)
 
@@ -240,7 +374,7 @@ fun InventarioScreen(
                             InventarioRow(
                                 item = item,
                                 onGuardar = viewModel::guardarFila,
-                                onDelete = { viewModel.eliminar(item.id!!) },
+                                onDelete = { eliminarId = item.id },
                                 onDiscard = { viewModel.descartarFila(item.id!!) }
                             )
                             Divider()
@@ -249,18 +383,9 @@ fun InventarioScreen(
                 }
             }
         }
-
-
-        FloatingActionButton(
-            onClick = { creando = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Agregar")
-        }
     }
 
+    // Dialog crear
     if (creando) {
         NuevoInventarioDialog(
             onSave = {
@@ -270,6 +395,8 @@ fun InventarioScreen(
             onDismiss = { creando = false }
         )
     }
+
+    // Dialog eliminar
     if (eliminarId != null) {
         AlertDialog(
             onDismissRequest = { eliminarId = null },
@@ -295,9 +422,8 @@ fun InventarioScreen(
             }
         )
     }
-
-
 }
+
 @Composable
 fun BuscadorInventario(viewModel: InventarioViewModel) {
     var texto by remember { mutableStateOf("") }
