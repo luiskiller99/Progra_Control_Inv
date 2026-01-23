@@ -56,7 +56,7 @@ fun PedidoCard(pedido: Pedido) {
         Column(Modifier.padding(12.dp)) {
 
             Text(
-                text = pedido.profiles?.email ?: "Empleado desconocido",
+                text = pedido.emailEmpleado?.toString() ?: "Empleado desconocido",
                 style = MaterialTheme.typography.titleMedium
             )
 
