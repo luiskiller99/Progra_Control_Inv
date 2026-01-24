@@ -12,13 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,22 +34,6 @@ private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
-
-@Serializable
-data class Inventario(
-    val id: String? = null,
-    val codigo: String? ,
-    val descripcion: String? ,
-    val cantidad: Int? ,
-    val clasificacion: String? ,
-    val extra1: String? = null,
-    val extra2: String? = null
-)
-enum class Pantalla {
-    INVENTARIO,
-    PEDIDOS
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,11 +64,13 @@ class MainActivity : ComponentActivity() {
 
                         Pantalla.PEDIDOS -> {
                             PedidosAdminScreen(
-                                onBack = {
-                                    pantalla = Pantalla.INVENTARIO
+                                onBack = { pantalla = Pantalla.INVENTARIO },
+                                onPedidoClick = { pedido ->
+                                    println("Pedido ${pedido.id}")
                                 }
                             )
                         }
+
                     }
                 }
 
@@ -112,6 +95,20 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+@Serializable
+data class Inventario(
+    val id: String? = null,
+    val codigo: String? ,
+    val descripcion: String? ,
+    val cantidad: Int? ,
+    val clasificacion: String? ,
+    val extra1: String? = null,
+    val extra2: String? = null
+)
+enum class Pantalla {
+    INVENTARIO,
+    PEDIDOS
 }
 suspend fun actualizarInventario(item: Inventario) {
     if (item.id == null) return
@@ -139,57 +136,6 @@ suspend fun eliminarInventario(id: String) {
         }
 
 }
-/*
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PedidosAdminScreen(
-    viewModel: PedidoAdminViewModel = viewModel(),
-    onBack: () -> Unit,
-    onPedidoClick: (Pedido) -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Pedidos") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-
-        if (viewModel.cargando) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-
-        if (viewModel.pedidos.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay pedidos")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-            ) {
-                items(viewModel.pedidos, key = { it.id }) { pedido ->
-                    PedidoItem(
-                        pedido = pedido,
-                        onClick = { onPedidoClick(pedido) }
-                    )
-                    Divider()
-                }
-            }
-        }
-    }
-}*/
 @Composable
 fun PedidoItem(
     pedido: Pedido,
@@ -202,8 +148,8 @@ fun PedidoItem(
             .padding(16.dp)
     ) {
         Text(
-            text = "Empleado: ${pedido.empleado_id}",
-            style = MaterialTheme.typography.bodyMedium
+            text = pedido.emailEmpleado ?: "Empleado desconocido",
+            style = MaterialTheme.typography.titleMedium
         )
         Text(
             text = "Estado: ${pedido.estado}",
@@ -217,9 +163,7 @@ fun PedidoItem(
 }
 
 @Composable
-fun PedidoEmpleadoScreen(
-   // viewModel: PedidoViewModel = viewModel()
-) {
+fun PedidoEmpleadoScreen() {
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
     )
@@ -314,15 +258,10 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 }
 /**IMPORTANTE*/
 @Composable
-/**fun InventarioScreen(
-    viewModel: InventarioViewModel = viewModel(),
-    onVerPedidos: (() -> Unit)? = null
-) */
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),
     onVerPedidos: () -> Unit
-)
-{
+) {
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }

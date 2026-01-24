@@ -1,5 +1,4 @@
 package com.example.controlinv
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,23 +6,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
+import kotlinx.serialization.Serializable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidosAdminScreen(
     onBack: () -> Unit,
-    viewModel: PedidosAdminViewModel = viewModel()
-) {
+    onPedidoClick: (Pedido) -> Unit,
+    viewModel: PedidoAdminViewModel = viewModel()
+)
+{
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Pedidos") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -34,13 +36,28 @@ fun PedidosAdminScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            items(viewModel.pedidos) { pedido ->
-                PedidoCard(pedido)
+        if (viewModel.pedidos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay pedidos")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                items(viewModel.pedidos, key = { it.id }) { pedido ->
+                    PedidoItem(
+                        pedido = pedido,
+                        onClick = { onPedidoClick(pedido) }
+                    )
+                    Divider()
+                }
             }
         }
     }
@@ -87,3 +104,19 @@ fun PedidoCard(pedido: Pedido) {
         }
     }
 }
+/*
+suspend fun cargarDetalle(pedidoId: String): List<DetallePedido> {
+    return supabase.from("pedido_detalle")
+        .select()
+        .filter("pedido_id", "eq", pedidoId) // <- esto es correcto en supabase-kt reciente
+        .decodeList<DetallePedido>()
+}
+*/
+@Serializable
+data class DetallePedido(
+    val pedido_id: String,
+    val producto_id: String,
+    val cantidad: Int,
+    var producto: Inventario? = null // luego lo rellenamos
+)
+
