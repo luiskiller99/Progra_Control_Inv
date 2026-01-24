@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,14 +105,16 @@ fun PedidoCard(pedido: Pedido) {
         }
     }
 }
-/*
 suspend fun cargarDetalle(pedidoId: String): List<DetallePedido> {
     return supabase.from("pedido_detalle")
-        .select()
-        .filter("pedido_id", "eq", pedidoId) // <- esto es correcto en supabase-kt reciente
+        .select {
+            filter {
+                eq("pedido_id", pedidoId)
+            }
+        }
         .decodeList<DetallePedido>()
 }
-*/
+
 @Serializable
 data class DetallePedido(
     val pedido_id: String,
