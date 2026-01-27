@@ -8,6 +8,9 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+
+
 @Serializable
 data class Pedido(
     val id: String,
@@ -15,16 +18,10 @@ data class Pedido(
     val estado: String,
     @SerialName("fecha")
     val created_at: String,
-    // NO viene de Supabase, lo llenamos nosotros
-    var emailEmpleado: String? = null
-    //val profiles: Profile? = null
-)
-@Serializable
-data class PedidoDetalle(
-    val id: String,
-    val producto_id: String,
-    val cantidad: Int,
-    val inventario: Inventario? = null
+
+    // 👇 NO vienen de Supabase, se llenan en el ViewModel
+    var emailEmpleado: String? = null,
+    var detalles: List<DetallePedido> = emptyList()
 )
 class PedidoAdminViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
@@ -37,22 +34,80 @@ class PedidoAdminViewModel : ViewModel() {
     private fun cargarPedidos() {
         viewModelScope.launch {
             cargando = true
-            val lista = supabase.from("pedidos").select().decodeList<Pedido>()
-            // Obtener todos los IDs únicos de empleados
-            val idsEmpleados = lista.map { it.empleado_id }.distinct()
-            // Traer perfiles de esos empleados
+
+            // 1️⃣ Pedidos
+            val pedidosDB = supabase
+                .from("pedidos")
+                .select()
+                .decodeList<Pedido>()
+
+            // 2️⃣ Perfiles
             val perfiles = supabase
                 .from("profiles")
                 .select()
                 .decodeList<Profile>()
                 .associateBy { it.id }
-            // Mapear el email en cada pedido
-            pedidos = lista.map {
-                it.copy(
-                    emailEmpleado = perfiles[it.empleado_id]?.email ?: "Empleado desconocido"
+
+            // 3️⃣ Inventario
+            val inventario = supabase
+                .from("inventario")
+                .select()
+                .decodeList<Inventario>()
+                .associateBy { it.id }
+
+            // 4️⃣ Detalles
+            val detalles = supabase
+                .from("pedido_detalle")
+                .select()
+                .decodeList<DetallePedido>()
+                .groupBy { it.pedido_id }
+
+            // 5️⃣ Armar pedidos finales
+            pedidos = pedidosDB.map { pedido ->
+
+                val det = detalles[pedido.id].orEmpty().map {
+                    it.copy(producto = inventario[it.producto_id])
+                }
+
+                pedido.copy(
+                    emailEmpleado = perfiles[pedido.empleado_id]?.email ?: "Empleado desconocido",
+                    detalles = det
                 )
             }
+
             cargando = false
         }
     }
+
+}
+fun aceptarPedido(pedidoId: String) = viewModelScope.launch {
+    supabase.from("pedidos")
+        .update(mapOf("estado" to "ACEPTADO")) {
+            filter { eq("id", pedidoId) }
+        }
+    cargarPedidos()
+}
+
+fun rechazarPedido(pedidoId: String) = viewModelScope.launch {
+
+    val detalles = supabase.from("pedido_detalle")
+        .select()
+        .filter { eq("pedido_id", pedidoId) }
+        .decodeList<DetallePedido>()
+
+    detalles.forEach {
+        supabase.from("inventario")
+            .update(
+                mapOf("cantidad" to "cantidad + ${it.cantidad}")
+            ) {
+                filter { eq("id", it.producto_id) }
+            }
+    }
+
+    supabase.from("pedidos")
+        .update(mapOf("estado" to "RECHAZADO")) {
+            filter { eq("id", pedidoId) }
+        }
+
+    cargarPedidos()
 }

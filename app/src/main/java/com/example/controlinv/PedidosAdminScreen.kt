@@ -55,66 +55,20 @@ fun PedidosAdminScreen(
                 items(viewModel.pedidos, key = { it.id }) { pedido ->
                     PedidoItem(
                         pedido = pedido,
-                        onClick = { onPedidoClick(pedido) }
+                        onAceptar = {
+                            viewModel.aceptarPedido(pedido.id)
+                        },
+                        onRechazar = {
+                            viewModel.rechazarPedido(pedido.id)
+                        }
                     )
+
                     Divider()
                 }
             }
         }
     }
 }
-@Composable
-fun PedidoCard(pedido: Pedido) {
-    Card(
-        modifier = Modifier
-            .padding(12.dp)
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(Modifier.padding(12.dp)) {
-
-            Text(
-                text = pedido.emailEmpleado?.toString() ?: "Empleado desconocido",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Text("Estado: ${pedido.estado}")
-            Text("Fecha: ${pedido.created_at}")
-
-            Spacer(Modifier.height(8.dp))
-
-            Row {
-                Button(
-                    onClick = { /* aceptar */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Aceptar")
-                }
-
-                Spacer(Modifier.width(8.dp))
-
-                OutlinedButton(
-                    onClick = { /* rechazar */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Rechazar")
-                }
-            }
-        }
-    }
-}
-suspend fun cargarDetalle(pedidoId: String): List<DetallePedido> {
-    return supabase.from("pedido_detalle")
-        .select {
-            filter {
-                eq("pedido_id", pedidoId)
-            }
-        }
-        .decodeList<DetallePedido>()
-}
-
 @Serializable
 data class DetallePedido(
     val pedido_id: String,
@@ -122,4 +76,74 @@ data class DetallePedido(
     val cantidad: Int,
     var producto: Inventario? = null // luego lo rellenamos
 )
+@Composable
+fun PedidoItem(
+    pedido: Pedido,
+    onAceptar: () -> Unit,
+    onRechazar: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+
+            // 📧 Email
+            Text(
+                pedido.emailEmpleado ?: "Empleado desconocido",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // 📅 Fecha + Estado
+            Text(
+                "Fecha: ${pedido.created_at}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Estado: ${pedido.estado}",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // 📦 Detalle
+            Text("Productos:", style = MaterialTheme.typography.labelMedium)
+
+            pedido.detalles.forEach {
+                Text(
+                    "• ${it.producto?.descripcion ?: "Producto"} x ${it.cantidad}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ✅❌ Botones
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = onRechazar,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Rechazar")
+                }
+
+                Spacer(Modifier.width(8.dp))
+
+                Button(onClick = onAceptar) {
+                    Text("Aceptar")
+                }
+            }
+        }
+    }
+}
+
 

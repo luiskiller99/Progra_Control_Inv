@@ -137,32 +137,6 @@ suspend fun eliminarInventario(id: String) {
 
 }
 @Composable
-fun PedidoItem(
-    pedido: Pedido,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(16.dp)
-    ) {
-        Text(
-            text = pedido.emailEmpleado ?: "Empleado desconocido",
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = "Estado: ${pedido.estado}",
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(
-            text = "Fecha: ${pedido.created_at}",
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
-
-@Composable
 fun PedidoEmpleadoScreen() {
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
