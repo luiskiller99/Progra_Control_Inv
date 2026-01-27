@@ -11,22 +11,15 @@ import kotlinx.coroutines.launch
 class InventarioViewModel : ViewModel() {
     var hayCambios by mutableStateOf(false)
         private set
-
-
     var cargando by mutableStateOf(false)
         private set
-
-    /** Lista original (lo que viene de la BD) */
     private var inventarioCompleto = listOf<Inventario>()
-
-    /** Lista editable (lo que se muestra en pantalla) */
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
 
     init {
         cargarInventario()
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
@@ -42,10 +35,6 @@ class InventarioViewModel : ViewModel() {
             cargando = false
         }
     }
-
-    /** =========================
-     * FILTRO (no toca la BD)
-     * ========================= */
     fun filtrar(texto: String) {
         inventario = if (texto.isBlank()) {
             inventarioCompleto.map { it.copy() }
@@ -59,9 +48,6 @@ class InventarioViewModel : ViewModel() {
         }
     }
 
-    /** =========================
-     * AGREGAR (sí guarda en BD)
-     * ========================= */
     fun agregar(item: Inventario) {
         viewModelScope.launch {
             val creado = insertarInventario(item)
@@ -69,9 +55,6 @@ class InventarioViewModel : ViewModel() {
             inventario = inventarioCompleto.map { it.copy() }
         }
     }
-    /** =========================
-     * ELIMINAR
-     * ========================= */
     fun eliminar(id: String) {
         viewModelScope.launch {
             eliminarInventario(id)
@@ -80,7 +63,6 @@ class InventarioViewModel : ViewModel() {
             hayCambios = false
         }
     }
-    /** Guardar UNA fila */
     fun guardarFila(item: Inventario) {
         viewModelScope.launch {
             if (item.id == null) return@launch
@@ -94,8 +76,6 @@ class InventarioViewModel : ViewModel() {
             inventario = inventarioCompleto.map { it.copy() }
         }
     }
-
-    /** Descartar cambios de UNA fila */
     fun descartarFila(id: String) {
         val original = inventarioCompleto.find { it.id == id } ?: return
         inventario = inventario.map {

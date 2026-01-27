@@ -9,19 +9,22 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
+import android.util.Log
+import android.widget.Toast
 
 @Serializable
 data class Pedido(
     val id: String,
+    @SerialName("empleado_id")
     val empleado_id: String,
     val estado: String,
     @SerialName("fecha")
     val created_at: String,
-
     // 👇 NO vienen de Supabase, se llenan en el ViewModel
     var emailEmpleado: String? = null,
     var detalles: List<DetallePedido> = emptyList()
 )
+
 class PedidoAdminViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
         private set
@@ -64,8 +67,6 @@ class PedidoAdminViewModel : ViewModel() {
 
         cargarPedidos()*/
     }
-
-
     fun cargarPedidos() {
         viewModelScope.launch {
             cargando = true
@@ -77,6 +78,7 @@ class PedidoAdminViewModel : ViewModel() {
                 .decodeList<Pedido>()
 
             // 2️⃣ Perfiles
+
             val perfiles = supabase
                 .from("profiles")
                 .select()
@@ -99,11 +101,9 @@ class PedidoAdminViewModel : ViewModel() {
 
             // 5️⃣ Armar pedidos finales
             pedidos = pedidosDB.map { pedido ->
-
                 val det = detalles[pedido.id].orEmpty().map {
                     it.copy(producto = inventario[it.producto_id])
                 }
-
                 pedido.copy(
                     emailEmpleado = perfiles[pedido.empleado_id]?.email ?: "Empleado desconocido",
                     detalles = det

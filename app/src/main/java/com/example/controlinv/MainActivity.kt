@@ -189,7 +189,6 @@ fun PedidoEmpleadoScreen() {
 
     }
 }
-/**IMPORTANTE*/
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
 
@@ -230,7 +229,6 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         }
     }
 }
-/**IMPORTANTE*/
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),
@@ -336,7 +334,6 @@ fun InventarioScreen(
         )
     }
 }
-
 @Composable
 fun BuscadorInventario(viewModel: InventarioViewModel) {
     var texto by remember { mutableStateOf("") }
