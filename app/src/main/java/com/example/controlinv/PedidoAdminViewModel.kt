@@ -8,6 +8,7 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.collections.mapOf
 
 @Serializable
 data class Pedido(
@@ -36,41 +37,34 @@ class PedidoAdminViewModel : ViewModel() {
             }
         cargarPedidos()
     }
-    fun rechazarPedido(pedidoId: String) {
-        viewModelScope.launch {
+    fun rechazarPedido(pedidoId: String) = viewModelScope.launch {
+/*
+        // 1️⃣ Obtener detalles del pedido
+        val detalles = supabase
+            .from("pedido_detalle")
+            .select()
+            .match(mapOf("pedido_id" to pedidoId))
+            .decodeList<DetallePedido>()
 
-            // 1️⃣ Devolver inventario
-            val detalles = supabase
-                .from("pedido_detalle")
-                .select {
-                    filter { eq("pedido_id", pedidoId) }
-                }
-                .decodeList<DetallePedido>()
-
-            detalles.forEach { det ->
-                supabase.from("inventario")
-                    .update(
-                        {
-                            set("cantidad", "cantidad + ${det.cantidad}")
-                        }
-                    ) {
-                        filter { eq("id", det.producto_id) }
-                    }
-            }
-
-            // 2️⃣ Cambiar estado
-            supabase.from("pedidos")
-                .update(
-                    {
-                        set("estado", "RECHAZADO")
-                    }
-                ) {
-                    filter { eq("id", pedidoId) }
-                }
-
-            cargarPedidos()
+        // 2️⃣ Devolver stock usando RPC
+        detalles.forEach { det ->
+            supabase.rpc(
+                "devolver_stock",
+                mapOf(
+                    "p_producto_id" to det.producto_id,
+                    "p_cantidad" to det.cantidad
+                )
+            )
         }
+
+        // 3️⃣ Cambiar estado del pedido
+        supabase.from("pedidos")
+            .update(mapOf("estado" to "RECHAZADO"))
+            .match(mapOf("id" to pedidoId))
+
+        cargarPedidos()*/
     }
+
 
     fun cargarPedidos() {
         viewModelScope.launch {

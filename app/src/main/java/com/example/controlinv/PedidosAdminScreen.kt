@@ -75,6 +75,10 @@ fun PedidoItem(
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
 ) {
+    val fechaCorta = pedido.created_at
+        .replace("T", " ")
+        .substring(0, 16)
+
     Card(
         modifier = Modifier
             .padding(8.dp)
@@ -93,7 +97,7 @@ fun PedidoItem(
 
             // 📅 Fecha + Estado
             Text(
-                "Fecha: ${pedido.created_at}",
+                text = "Fecha: $fechaCorta",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
