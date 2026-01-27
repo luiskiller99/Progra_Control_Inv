@@ -9,8 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
-
 @Serializable
 data class Pedido(
     val id: String,
@@ -31,7 +29,50 @@ class PedidoAdminViewModel : ViewModel() {
     init {
         cargarPedidos()
     }
-    private fun cargarPedidos() {
+    fun aceptarPedido(pedidoId: String) = viewModelScope.launch {
+        supabase.from("pedidos")
+            .update(mapOf("estado" to "ACEPTADO")) {
+                filter { eq("id", pedidoId) }
+            }
+        cargarPedidos()
+    }
+    fun rechazarPedido(pedidoId: String) {
+        viewModelScope.launch {
+
+            // 1️⃣ Devolver inventario
+            val detalles = supabase
+                .from("pedido_detalle")
+                .select {
+                    filter { eq("pedido_id", pedidoId) }
+                }
+                .decodeList<DetallePedido>()
+
+            detalles.forEach { det ->
+                supabase.from("inventario")
+                    .update(
+                        {
+                            set("cantidad", "cantidad + ${det.cantidad}")
+                        }
+                    ) {
+                        filter { eq("id", det.producto_id) }
+                    }
+            }
+
+            // 2️⃣ Cambiar estado
+            supabase.from("pedidos")
+                .update(
+                    {
+                        set("estado", "RECHAZADO")
+                    }
+                ) {
+                    filter { eq("id", pedidoId) }
+                }
+
+            cargarPedidos()
+        }
+    }
+
+    fun cargarPedidos() {
         viewModelScope.launch {
             cargando = true
 
@@ -79,35 +120,4 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-}
-fun aceptarPedido(pedidoId: String) = viewModelScope.launch {
-    supabase.from("pedidos")
-        .update(mapOf("estado" to "ACEPTADO")) {
-            filter { eq("id", pedidoId) }
-        }
-    cargarPedidos()
-}
-
-fun rechazarPedido(pedidoId: String) = viewModelScope.launch {
-
-    val detalles = supabase.from("pedido_detalle")
-        .select()
-        .filter { eq("pedido_id", pedidoId) }
-        .decodeList<DetallePedido>()
-
-    detalles.forEach {
-        supabase.from("inventario")
-            .update(
-                mapOf("cantidad" to "cantidad + ${it.cantidad}")
-            ) {
-                filter { eq("id", it.producto_id) }
-            }
-    }
-
-    supabase.from("pedidos")
-        .update(mapOf("estado" to "RECHAZADO")) {
-            filter { eq("id", pedidoId) }
-        }
-
-    cargarPedidos()
 }

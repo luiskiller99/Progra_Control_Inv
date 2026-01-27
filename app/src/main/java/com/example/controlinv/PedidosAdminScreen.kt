@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,13 +68,7 @@ fun PedidosAdminScreen(
         }
     }
 }
-@Serializable
-data class DetallePedido(
-    val pedido_id: String,
-    val producto_id: String,
-    val cantidad: Int,
-    var producto: Inventario? = null // luego lo rellenamos
-)
+
 @Composable
 fun PedidoItem(
     pedido: Pedido,
