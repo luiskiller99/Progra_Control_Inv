@@ -73,10 +73,10 @@ class PedidoAdminViewModel : ViewModel() {
     }
     fun cargarPedidos() {
         viewModelScope.launch {
-            try {
-                cargando = true
+            cargando = true
 
-                // 1️⃣ Pedidos (SOLO pedidos)
+            try {
+                // 1️⃣ Pedidos
                 val pedidos = supabase
                     .from("pedidos")
                     .select()
@@ -96,13 +96,26 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<Inventario>()
                     .associateBy { it.id }
 
-                // 4️⃣ UI (email placeholder)
+                // 4️⃣ Profiles (⚠️ PROTEGIDO)
+                val profiles = try {
+                    supabase
+                        .from("profiles")
+                        .select(Columns.raw("id,email"))
+                        .decodeList<Profile>()
+                        .associateBy { it.id }
+                } catch (e: Exception) {
+                    emptyMap()
+                }
+
+                // 5️⃣ UI
                 val pedidosUI = pedidos.map { pedido ->
+
+                    val emailEmpleado =
+                        profiles[pedido.empleado_id]?.email ?: "Empleado desconocido"
 
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
-
                             val nombre = inventario[det.producto_id]?.descripcion
                                 ?: "Producto desconocido"
                             "${det.cantidad} x $nombre"
@@ -110,7 +123,7 @@ class PedidoAdminViewModel : ViewModel() {
 
                     PedidoUI(
                         id = pedido.id,
-                        empleadoEmail = "Empleado desconocido",
+                        empleadoEmail = emailEmpleado,
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         productos = productos
@@ -118,14 +131,14 @@ class PedidoAdminViewModel : ViewModel() {
                 }
 
                 _listaPedidos.value = pedidosUI
-                cargando = false
 
             } catch (e: Exception) {
-                cargando = false
                 Log.e("PEDIDOS", "Error cargando pedidos", e)
+                _listaPedidos.value = emptyList()
+            } finally {
+                cargando = false
             }
         }
     }
-
 
 }
