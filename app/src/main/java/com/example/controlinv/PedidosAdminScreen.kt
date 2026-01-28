@@ -1,4 +1,5 @@
 package com.example.controlinv
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -6,10 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidosAdminScreen(
@@ -18,6 +23,11 @@ fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
 )
 {
+    val pedidos by viewModel._listaPedidos.collectAsState()
+    LaunchedEffect(pedidos) {
+        Log.d("UI_DEBUG", "Pedidos recibidos en UI: ${pedidos.size}")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -35,7 +45,7 @@ fun PedidosAdminScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
-        if (viewModel.pedidos.isEmpty()) {
+        if (pedidos.isEmpty()) {
             Box(
                 modifier = Modifier
                     .padding(padding)
@@ -50,7 +60,7 @@ fun PedidosAdminScreen(
                     .padding(padding)
                     .fillMaxSize()
             ) {
-                items(viewModel.pedidos, key = { it.id }) { pedido ->
+                items(pedidos, key = { it.id }) { pedido ->
                     PedidoItem(
                         pedido = pedido,
                         onAceptar = {
@@ -60,17 +70,17 @@ fun PedidosAdminScreen(
                             viewModel.rechazarPedido(pedido.id)
                         }
                     )
-
                     Divider()
                 }
             }
         }
+
     }
 }
 
 @Composable
 fun PedidoItem(
-    pedido: Pedido,
+    pedido: PedidoUI,
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
 ) {
@@ -88,7 +98,7 @@ fun PedidoItem(
 
             // 📧 Email
             Text(
-                pedido.profile?.email ?: "Empleado desconocido",
+                pedido.empleadoEmail ?: "Empleado desconocido",
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -109,10 +119,13 @@ fun PedidoItem(
             // 📦 Detalle
             Text("Productos:", style = MaterialTheme.typography.labelMedium)
 
-            pedido.pedido_detalle.forEach { det ->
-                val productoId = det.producto_id
-                val cantidad = det.cantidad
+            pedido.productos.forEach { productoTexto ->
+                Text(
+                    text = "• $productoTexto",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
+
 
 
             Spacer(Modifier.height(12.dp))
@@ -140,5 +153,4 @@ fun PedidoItem(
         }
     }
 }
-
 
