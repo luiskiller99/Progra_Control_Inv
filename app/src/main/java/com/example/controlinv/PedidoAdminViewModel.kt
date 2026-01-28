@@ -11,21 +11,43 @@ import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
 import android.util.Log
 import android.widget.Toast
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+@Serializable
+data class PedidoUI(
+    val id: String,
+    val empleadoEmail: String,
+    val fecha: String,
+    val estado: String,
+    val productos: List<String>
+)
 
 @Serializable
 data class Pedido(
     val id: String,
-    @SerialName("empleado_id")
-    val empleado_id: String,
+    val fecha: String,
     val estado: String,
-    @SerialName("fecha")
-    val created_at: String,
-    // 👇 NO vienen de Supabase, se llenan en el ViewModel
-    var emailEmpleado: String? = null,
-    var detalles: List<DetallePedido> = emptyList()
+    val empleado_id: String,
+
+    @SerialName("profiles")
+    val profile: Profile? = null,
+
+    val pedido_detalle: List<DetallePedido> = emptyList()
 )
 
+@Serializable
+data class Profile(
+    val id: String,
+    val email: String,
+    val role: String
+)
+
+
 class PedidoAdminViewModel : ViewModel() {
+    private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
+    val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
+
     var cargando by mutableStateOf(false)
         private set
     var pedidos by mutableStateOf<List<Pedido>>(emptyList())
@@ -67,7 +89,7 @@ class PedidoAdminViewModel : ViewModel() {
 
         cargarPedidos()*/
     }
-    fun cargarPedidos() {
+    /*fun cargarPedidos() {
         viewModelScope.launch {
             cargando = true
 
@@ -112,6 +134,56 @@ class PedidoAdminViewModel : ViewModel() {
 
             cargando = false
         }
+
+     */
+    fun cargarPedidos() {
+        viewModelScope.launch {
+            try {
+                cargando = true
+
+                // 1️⃣ Pedidos
+                val pedidos = supabase
+                    .from("pedidos")
+                    .select()
+                    .decodeList<Pedido>()
+
+                // 2️⃣ Profiles
+                val profiles = supabase
+                    .from("profiles")
+                    .select(Columns.list("id", "email"))
+                    .decodeList<Profile>()
+                    .associateBy { it.id }
+
+                // 3️⃣ UI
+                val pedidosUI = pedidos.map { pedido ->
+
+                    val emailEmpleado = profiles[pedido.empleado_id]?.email
+                        ?: "Empleado desconocido"
+
+                    PedidoUI(
+                        id = pedido.id,
+                        empleadoEmail = emailEmpleado,
+                        fecha = pedido.fecha,
+                        estado = pedido.estado,
+                        productos = pedido.pedido_detalle.map {
+                            "${it.cantidad} x ${it.producto_id}"
+                        }
+                    )
+                }
+
+                _listaPedidos.value = pedidosUI
+                cargando = false
+
+            } catch (e: Exception) {
+                cargando = false
+                Log.e("PEDIDOS", "Error cargando pedidos", e)
+            }
+        }
     }
+
+
+
+
+
 
 }
