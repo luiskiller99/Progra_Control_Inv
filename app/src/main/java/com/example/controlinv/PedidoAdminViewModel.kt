@@ -10,6 +10,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
 import android.util.Log
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.flow.MutableStateFlow
 @Serializable
 data class PedidoUI(
@@ -32,8 +33,6 @@ data class Pedido(
 class PedidoAdminViewModel : ViewModel() {
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     var cargando by mutableStateOf(false)
-        private set
-    var pedidos by mutableStateOf<List<Pedido>>(emptyList())
         private set
     init {
         cargarPedidos()
@@ -76,57 +75,47 @@ class PedidoAdminViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 cargando = true
-                // 1️⃣ Pedidos
+
+                // 1️⃣ Pedidos (SOLO pedidos)
                 val pedidos = supabase
                     .from("pedidos")
                     .select()
                     .decodeList<Pedido>()
-                Log.d("DEBUG", "Pedidos DB size = ${pedidos.size}")
-                // 2️⃣ Detalles de pedidos
+
+                // 2️⃣ Detalles
                 val detalles = supabase
                     .from("pedido_detalle")
                     .select()
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
-                Log.d("DEBUG", "Detalles DB size = ${detalles.size}")
-                // 3️⃣ Inventario (para descripción del producto)
+
+                // 3️⃣ Inventario
                 val inventario = supabase
                     .from("inventario")
                     .select()
                     .decodeList<Inventario>()
                     .associateBy { it.id }
-                Log.d("DEBUG", "Inventario DB size = ${inventario.size}")
-                // 4️⃣ Profiles
-                val profiles = supabase
-                    .from("profiles")
-                    .select()
-                    .decodeList<Profile>()
-                    .associateBy { it.id }
-                Log.d("DEBUG", "Profiles DB size = ${profiles.size}")
-                // 5️⃣ Construimos la UI
+
+                // 4️⃣ UI (email placeholder)
                 val pedidosUI = pedidos.map { pedido ->
 
-                    val emailEmpleado = profiles[pedido.empleado_id]?.email
-                        ?: "Empleado desconocido"
-
-                    val items = detalles[pedido.id]
+                    val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
-                            val producto = inventario[det.producto_id]
-                            val nombre = producto?.descripcion ?: "Producto desconocido"
+
+                            val nombre = inventario[det.producto_id]?.descripcion
+                                ?: "Producto desconocido"
                             "${det.cantidad} x $nombre"
                         }
 
                     PedidoUI(
                         id = pedido.id,
-                        empleadoEmail = emailEmpleado,
+                        empleadoEmail = "Empleado desconocido",
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
-                        productos = items
+                        productos = productos
                     )
                 }
-                Log.d("DEBUG", "PedidosUI size = ${pedidosUI.size}")
-                Log.d("DEBUG", pedidosUI.toString())
 
                 _listaPedidos.value = pedidosUI
                 cargando = false
@@ -137,4 +126,6 @@ class PedidoAdminViewModel : ViewModel() {
             }
         }
     }
+
+
 }
