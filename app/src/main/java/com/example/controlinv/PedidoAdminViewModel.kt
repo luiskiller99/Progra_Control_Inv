@@ -26,9 +26,7 @@ data class Pedido(
     val fecha: String,
     val estado: String,
     val empleado_id: String,
-    @SerialName("profiles")
-    val profile: Profile? = null,
-    val pedido_detalle: List<DetallePedido> = emptyList()
+    val empleado_email: String? = null
 )
 class PedidoAdminViewModel : ViewModel() {
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
@@ -110,9 +108,6 @@ class PedidoAdminViewModel : ViewModel() {
                 // 5️⃣ UI
                 val pedidosUI = pedidos.map { pedido ->
 
-                    val emailEmpleado =
-                        profiles[pedido.empleado_id]?.email ?: "Empleado desconocido"
-
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
@@ -123,12 +118,13 @@ class PedidoAdminViewModel : ViewModel() {
 
                     PedidoUI(
                         id = pedido.id,
-                        empleadoEmail = emailEmpleado,
+                        empleadoEmail = pedido.empleado_email ?: "Empleado desconocido",
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         productos = productos
                     )
                 }
+
 
                 _listaPedidos.value = pedidosUI
 
