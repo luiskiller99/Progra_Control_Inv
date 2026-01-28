@@ -36,12 +36,7 @@ data class Pedido(
     val pedido_detalle: List<DetallePedido> = emptyList()
 )
 
-@Serializable
-data class Profile(
-    val id: String,
-    val email: String,
-    val role: String
-)
+
 
 
 class PedidoAdminViewModel : ViewModel() {

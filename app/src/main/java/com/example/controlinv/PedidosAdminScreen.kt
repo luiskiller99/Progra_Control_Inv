@@ -74,7 +74,7 @@ fun PedidoItem(
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
 ) {
-    val fechaCorta = pedido.created_at
+    val fechaCorta = pedido.fecha
         .replace("T", " ")
         .substring(0, 16)
 
@@ -88,7 +88,7 @@ fun PedidoItem(
 
             // 📧 Email
             Text(
-                pedido.emailEmpleado ?: "Empleado desconocido",
+                pedido.profile?.email ?: "Empleado desconocido",
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -109,12 +109,11 @@ fun PedidoItem(
             // 📦 Detalle
             Text("Productos:", style = MaterialTheme.typography.labelMedium)
 
-            pedido.detalles.forEach {
-                Text(
-                    "• ${it.producto?.descripcion ?: "Producto"} x ${it.cantidad}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+            pedido.pedido_detalle.forEach { det ->
+                val productoId = det.producto_id
+                val cantidad = det.cantidad
             }
+
 
             Spacer(Modifier.height(12.dp))
 

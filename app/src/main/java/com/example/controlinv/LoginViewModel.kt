@@ -17,13 +17,13 @@ sealed class EstadoLogin {
     object Empleado : EstadoLogin()
     data class Error(val mensaje: String) : EstadoLogin()
 }
-/**       Profile
+
 @Serializable
 data class Profile(
     val id: String,
     val email: String,
     val role: String
-)*/
+)
 
 class LoginViewModel : ViewModel() {
 
