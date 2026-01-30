@@ -3,7 +3,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -31,6 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
+import com.example.controlinv.admin.InventarioViewModel
+import com.example.controlinv.admin.PedidosAdminScreen
+import com.example.controlinv.empleado.ItemCarrito
+import com.example.controlinv.empleado.PedidoViewModel
+import com.example.controlinv.login.EstadoLogin
+import com.example.controlinv.login.LoginViewModel
 import kotlinx.coroutines.launch
 
 private val colCodigo = 90.dp
@@ -67,15 +71,14 @@ class MainActivity : ComponentActivity() {
                         Pantalla.PEDIDOS -> {
                             PedidosAdminScreen(
                                 onBack = { pantalla = Pantalla.INVENTARIO },
-                                onLogout = {
-                                    loginVM.logout()
-                                },
+                                onLogout = { loginVM.logout() },
                                 onPedidoClick = { pedido ->
                                     println("Pedido ${pedido.id}")
                                 }
                             )
                         }
                     }
+
 
                 }
                 is EstadoLogin.Empleado -> {
@@ -116,33 +119,6 @@ enum class Pantalla {
     INVENTARIO,
     PEDIDOS
 }
-suspend fun actualizarInventario(item: Inventario) {
-    if (item.id == null) return
-
-    supabase
-        .from("inventario")
-        .update(item) {
-            filter { eq("id", item.id) }
-        }
-}
-suspend fun insertarInventario(item: Inventario): Inventario {
-    return supabase
-        .from("inventario")
-        .insert(item) {
-            select()
-        }
-        .decodeSingle()
-}
-suspend fun eliminarInventario(id: String) {
-    supabase.from("inventario")
-        .delete {
-            filter{
-                eq("id", id)
-            }
-        }
-
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -277,9 +253,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         }
     }
 }
-suspend fun logout() {
-    supabase.auth.signOut()
-}
+
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),

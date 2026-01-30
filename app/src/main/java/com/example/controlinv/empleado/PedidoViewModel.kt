@@ -1,8 +1,10 @@
-package com.example.controlinv
+package com.example.controlinv.empleado
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.controlinv.Inventario
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -18,7 +20,7 @@ data class ItemCarrito(
 )
 
 class PedidoViewModel(
-    private val supabase: io.github.jan.supabase.SupabaseClient
+    private val supabase: SupabaseClient
 ) : ViewModel() {
 
 
@@ -49,14 +51,13 @@ class PedidoViewModel(
                         )
                     }
                 )
-
+                /**el problema esta en como lee la tabla*/
                 supabase.postgrest.rpc(
                     "crear_pedido",
                     JsonObject(
                         mapOf(
-                            "p_empleado_id" to JsonPrimitive(userId),//empleadoId
+                            "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
-                            //"p_empleado_email" to JsonPrimitive(email ?: "desconocido@local"),
                             "p_items" to itemsJson
                         )
                     )

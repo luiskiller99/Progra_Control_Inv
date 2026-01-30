@@ -1,1 +1,0 @@
-INSERT INTO "public"."profiles" ("id", "email", "role", "area") VALUES ('a9694c31-c6f9-44f8-a0ba-9aac7d749ca5', 'admin@test.com', 'admin', null), ('bc44c7d9-03f5-4254-9e33-9e5b3eb579ad', 'empleado@test.com', 'empleado', 'ORNAMENTALES');

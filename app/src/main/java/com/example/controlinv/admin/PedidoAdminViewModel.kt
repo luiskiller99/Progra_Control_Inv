@@ -1,4 +1,4 @@
-package com.example.controlinv
+package com.example.controlinv.admin
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -6,11 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
 import android.util.Log
-import io.github.jan.supabase.postgrest.query.Columns
+import com.example.controlinv.DetallePedido
+import com.example.controlinv.Inventario
+import com.example.controlinv.supabase
 import kotlinx.coroutines.flow.MutableStateFlow
 @Serializable
 data class PedidoUI(

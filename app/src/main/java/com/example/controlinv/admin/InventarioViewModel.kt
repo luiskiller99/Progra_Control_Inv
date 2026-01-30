@@ -1,10 +1,14 @@
-package com.example.controlinv
+package com.example.controlinv.admin
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.controlinv.Inventario
+import com.example.controlinv.actualizarInventario
+import com.example.controlinv.eliminarInventario
+import com.example.controlinv.insertarInventario
+import com.example.controlinv.supabase
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 
@@ -85,5 +89,32 @@ class InventarioViewModel : ViewModel() {
 
 
 }
+suspend fun actualizarInventario(item: Inventario) {
+    if (item.id == null) return
 
+    supabase
+        .from("inventario")
+        .update(item) {
+            filter { eq("id", item.id) }
+        }
+}
+suspend fun insertarInventario(item: Inventario): Inventario {
+    return supabase
+        .from("inventario")
+        .insert(item) {
+            select()
+        }
+        .decodeSingle()
+}
+suspend fun eliminarInventario(id: String) {
+    supabase.from("inventario")
+        .delete {
+            filter{
+                eq("id", id)
+            }
+        }
 
+}
+suspend fun logout() {
+    supabase.auth.signOut()
+}

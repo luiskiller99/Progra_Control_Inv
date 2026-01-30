@@ -2,6 +2,7 @@ package com.example.controlinv
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.controlinv.empleado.PedidoViewModel
 import io.github.jan.supabase.SupabaseClient
 
 class PedidoViewModelFactory(
