@@ -31,12 +31,12 @@ import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import com.example.controlinv.admin.InventarioViewModel
 import com.example.controlinv.admin.PedidosAdminScreen
+import com.example.controlinv.admin.logout
 import com.example.controlinv.empleado.ItemCarrito
 import com.example.controlinv.empleado.PedidoViewModel
 import com.example.controlinv.login.EstadoLogin
 import com.example.controlinv.login.LoginViewModel
 import kotlinx.coroutines.launch
-
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
@@ -253,7 +253,6 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         }
     }
 }
-
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),
@@ -632,7 +631,6 @@ fun ProductoCard(
         }
     }
 }
-
 @Composable
 fun CarritoResumen(
     carrito: List<ItemCarrito>,

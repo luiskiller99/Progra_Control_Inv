@@ -1,5 +1,4 @@
 package com.example.controlinv.empleado
-
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,17 +12,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.collections.mapOf
-/*APP LUISKILLER99*/
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int
 )
-
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
-
-
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
     var carrito = mutableStateListOf<ItemCarrito>()
@@ -51,7 +46,6 @@ class PedidoViewModel(
                         )
                     }
                 )
-                /**el problema esta en como lee la tabla*/
                 supabase.postgrest.rpc(
                     "crear_pedido",
                     JsonObject(
@@ -88,8 +82,5 @@ class PedidoViewModel(
         } else {
             carrito.add(ItemCarrito(item, cantidad))
         }
-    }
-    fun limpiarCarrito() {
-        carrito.clear()
     }
 }

@@ -33,9 +33,7 @@ class PedidoAdminViewModel : ViewModel() {
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     var cargando by mutableStateOf(false)
         private set
-    init {
-        cargarPedidos()
-    }
+    init {cargarPedidos() }
     fun aceptarPedido(pedidoId: String) = viewModelScope.launch {
         supabase.from("pedidos")
             .update(mapOf("estado" to "ACEPTADO")) {
@@ -43,100 +41,7 @@ class PedidoAdminViewModel : ViewModel() {
             }
         cargarPedidos()
     }
-    fun rechazarPedido(pedidoId: String) = viewModelScope.launch {
-/*
-        // 1️⃣ Obtener detalles del pedido
-        val detalles = supabase
-            .from("pedido_detalle")
-            .select()
-            .match(mapOf("pedido_id" to pedidoId))
-            .decodeList<DetallePedido>()
-
-        // 2️⃣ Devolver stock usando RPC
-        detalles.forEach { det ->
-            supabase.rpc(
-                "devolver_stock",
-                mapOf(
-                    "p_producto_id" to det.producto_id,
-                    "p_cantidad" to det.cantidad
-                )
-            )
-        }
-
-        // 3️⃣ Cambiar estado del pedido
-        supabase.from("pedidos")
-            .update(mapOf("estado" to "RECHAZADO"))
-            .match(mapOf("id" to pedidoId))
-
-        cargarPedidos()*/
-    }
-    /**fun cargarPedidos() {
-        viewModelScope.launch {
-            cargando = true
-
-            try {
-                // 1️⃣ Pedidos
-                val pedidos = supabase
-                    .from("pedidos")
-                    .select()
-                    .decodeList<Pedido>()
-
-                // 2️⃣ Detalles
-                val detalles = supabase
-                    .from("pedido_detalle")
-                    .select()
-                    .decodeList<DetallePedido>()
-                    .groupBy { it.pedido_id }
-
-                // 3️⃣ Inventario
-                val inventario = supabase
-                    .from("inventario")
-                    .select()
-                    .decodeList<Inventario>()
-                    .associateBy { it.id }
-
-                // 4️⃣ Profiles (⚠️ PROTEGIDO)
-                val profiles = try {
-                    supabase
-                        .from("profiles")
-                        .select(Columns.raw("id,email"))
-                        .decodeList<Profile>()
-                        .associateBy { it.id }
-                } catch (e: Exception) {
-                    emptyMap()
-                }
-
-                // 5️⃣ UI
-                val pedidosUI = pedidos.map { pedido ->
-
-                    val productos = detalles[pedido.id]
-                        .orEmpty()
-                        .map { det ->
-                            val nombre = inventario[det.producto_id]?.descripcion
-                                ?: "Producto desconocido"
-                            "${det.cantidad} x $nombre"
-                        }
-
-                    PedidoUI(
-                        id = pedido.id,
-                        empleadoEmail = pedido.empleado_email ?: "Empleado desconocido",
-                        fecha = pedido.fecha.toString(),
-                        estado = pedido.estado,
-                        productos = productos
-                    )
-                }
-
-
-                _listaPedidos.value = pedidosUI
-
-            } catch (e: Exception) {
-                Log.e("PEDIDOS", "Error cargando pedidos", e)
-                _listaPedidos.value = emptyList()
-            } finally {
-                cargando = false
-            }
-        }
-    }*/
+    fun rechazarPedido(pedidoId: String) = viewModelScope.launch {}
     fun cargarPedidos() {
         viewModelScope.launch {
             try {
