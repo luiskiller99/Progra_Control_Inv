@@ -1,5 +1,6 @@
-package com.example.controlinv
+package com.example.controlinv.empleado
 
+import com.example.controlinv.Inventario
 import kotlinx.serialization.Serializable
 
 @Serializable

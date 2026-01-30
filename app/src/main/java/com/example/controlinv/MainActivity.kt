@@ -23,19 +23,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
-import com.example.controlinv.admin.InventarioViewModel
-import com.example.controlinv.admin.PedidosAdminScreen
-import com.example.controlinv.admin.logout
+import com.example.controlinv.inventario.InventarioViewModel
+import com.example.controlinv.inventario.logout
 import com.example.controlinv.empleado.ItemCarrito
 import com.example.controlinv.empleado.PedidoViewModel
-import com.example.controlinv.login.EstadoLogin
-import com.example.controlinv.login.LoginViewModel
+import com.example.controlinv.auth.EstadoLogin
+import com.example.controlinv.auth.LoginViewModel
+import com.example.controlinv.auth.supabase
+import com.example.controlinv.empleado.PedidoViewModelFactory
+import com.example.controlinv.empleado.PedidosAdminScreen
 import kotlinx.coroutines.launch
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp

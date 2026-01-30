@@ -1,4 +1,4 @@
-package com.example.controlinv.admin
+package com.example.controlinv.empleado
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,9 +9,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
 import android.util.Log
-import com.example.controlinv.DetallePedido
+import com.example.controlinv.empleado.DetallePedido
 import com.example.controlinv.Inventario
-import com.example.controlinv.supabase
+import com.example.controlinv.auth.supabase
 import kotlinx.coroutines.flow.MutableStateFlow
 @Serializable
 data class PedidoUI(

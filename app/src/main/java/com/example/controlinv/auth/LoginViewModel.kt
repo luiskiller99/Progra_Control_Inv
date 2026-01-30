@@ -1,11 +1,10 @@
-package com.example.controlinv.login
+package com.example.controlinv.auth
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.supabase
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from

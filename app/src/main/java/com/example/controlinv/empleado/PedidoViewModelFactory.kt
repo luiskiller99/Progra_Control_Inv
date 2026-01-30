@@ -1,8 +1,7 @@
-package com.example.controlinv
+package com.example.controlinv.empleado
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.controlinv.empleado.PedidoViewModel
 import io.github.jan.supabase.SupabaseClient
 
 class PedidoViewModelFactory(
@@ -17,5 +16,3 @@ class PedidoViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel")
     }
 }
-
-

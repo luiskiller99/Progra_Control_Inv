@@ -1,4 +1,4 @@
-package com.example.controlinv
+package com.example.controlinv.auth
 
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
@@ -13,6 +13,6 @@ val supabase = createSupabaseClient(
     install(Auth)
     install(Postgrest)
 
-    install(io.github.jan.supabase.gotrue.Auth)
-    install(io.github.jan.supabase.postgrest.Postgrest)
+    install(Auth)
+    install(Postgrest)
 }

@@ -1,4 +1,4 @@
-package com.example.controlinv.admin
+package com.example.controlinv.inventario
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.Inventario
-import com.example.controlinv.supabase
+import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
