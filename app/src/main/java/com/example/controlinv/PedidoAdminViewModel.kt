@@ -69,7 +69,7 @@ class PedidoAdminViewModel : ViewModel() {
 
         cargarPedidos()*/
     }
-    fun cargarPedidos() {
+    /**fun cargarPedidos() {
         viewModelScope.launch {
             cargando = true
 
@@ -133,6 +133,57 @@ class PedidoAdminViewModel : ViewModel() {
                 _listaPedidos.value = emptyList()
             } finally {
                 cargando = false
+            }
+        }
+    }*/
+    fun cargarPedidos() {
+        viewModelScope.launch {
+            try {
+                cargando = true
+
+                val pedidos = supabase
+                    .from("pedidos")
+                    .select()
+                    .decodeList<Pedido>()
+
+                val detalles = supabase
+                    .from("pedido_detalle")
+                    .select()
+                    .decodeList<DetallePedido>()
+                    .groupBy { it.pedido_id }
+
+                val inventario = supabase
+                    .from("inventario")
+                    .select()
+                    .decodeList<Inventario>()
+                    .associateBy { it.id }
+
+
+
+                val pedidosUI = pedidos.map { pedido ->
+                    val productos = detalles[pedido.id]
+                        .orEmpty()
+                        .map { det ->
+                            val nombre = inventario[det.producto_id]?.descripcion
+                                ?: "Producto desconocido"
+                            "${det.cantidad} x $nombre"
+                        }
+
+                    PedidoUI(
+                        id = pedido.id,
+                        empleadoEmail = pedido.empleado_email ?: "Empleado desconocido", // 🔥 DIRECTO
+                        fecha = pedido.fecha.toString(),
+                        estado = pedido.estado,
+                        productos = productos
+                    )
+                }
+
+                _listaPedidos.value = pedidosUI
+                cargando = false
+
+            } catch (e: Exception) {
+                cargando = false
+                Log.e("PEDIDOS", "Error cargando pedidos", e)
             }
         }
     }

@@ -174,12 +174,13 @@ fun PedidoEmpleadoScreen() {
             carrito = pedidoViewModel.carrito,
             onConfirmar = {
                 if (userId == null) return@CarritoResumen
-
+                val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
                 pedidoViewModel.confirmarPedido(
                     userId = userId,
                     onOk = {
                         // Pedido creado correctamente
                     },
+                    email = emailUsuario,//aqui el error
                     onError = { error ->
                         // Mostrar error (stock insuficiente, etc)
                     }

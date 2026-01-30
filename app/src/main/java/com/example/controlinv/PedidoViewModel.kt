@@ -33,34 +33,39 @@ class PedidoViewModel(
     }
     fun confirmarPedido(
         userId: String,
+        email: String,
         onOk: () -> Unit,
         onError: (String) -> Unit
     ) {
-        viewModelScope.launch {
-            val itemsJson = JsonArray(
-                carrito.map {
+        try {
+            viewModelScope.launch {
+                val itemsJson = JsonArray(
+                    carrito.map {
+                        JsonObject(
+                            mapOf(
+                                "producto_id" to JsonPrimitive(it.producto.id!!),
+                                "cantidad" to JsonPrimitive(it.cantidad)
+                            )
+                        )
+                    }
+                )
+
+                supabase.postgrest.rpc(
+                    "crear_pedido",
                     JsonObject(
                         mapOf(
-                            "producto_id" to JsonPrimitive(it.producto.id!!),
-                            "cantidad" to JsonPrimitive(it.cantidad)
+                            "p_empleado_id" to JsonPrimitive(userId),//empleadoId
+                            "p_empleado_email" to JsonPrimitive(email),
+                            //"p_empleado_email" to JsonPrimitive(email ?: "desconocido@local"),
+                            "p_items" to itemsJson
                         )
                     )
-                }
-            )
-
-            supabase.postgrest.rpc(
-                "crear_pedido",
-                JsonObject(
-                    mapOf(
-                        "p_empleado_id" to JsonPrimitive(userId),//empleadoId
-                        "p_items" to itemsJson
-                    )
                 )
-            )
-
-
-            carrito.clear()
-            onOk()
+                carrito.clear()
+                onOk()
+            }
+        }catch (e: Exception) {
+            onError(e.message ?: "Error creando pedido")
         }
     }
     private fun cargarInventario() {
