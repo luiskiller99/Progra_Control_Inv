@@ -17,19 +17,15 @@ sealed class EstadoLogin {
     object Empleado : EstadoLogin()
     data class Error(val mensaje: String) : EstadoLogin()
 }
-
 @Serializable
 data class Profile(
     val id: String,
     val email: String,
     val role: String
 )
-
 class LoginViewModel : ViewModel() {
-
     var estado by mutableStateOf<EstadoLogin>(EstadoLogin.Login)
         private set
-
     fun login(email: String, pass: String) {
         viewModelScope.launch {
             try {
@@ -69,6 +65,12 @@ class LoginViewModel : ViewModel() {
             } catch (e: Exception) {
                 estado = EstadoLogin.Error(e.message ?: "Error de login")
             }
+        }
+    }
+    fun logout() {
+        viewModelScope.launch {
+            supabase.auth.signOut()
+            estado = EstadoLogin.Login
         }
     }
 }

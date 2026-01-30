@@ -12,9 +12,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -29,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
+
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
@@ -43,13 +47,11 @@ class MainActivity : ComponentActivity() {
             val loginVM: LoginViewModel = viewModel()
 
             when (val estado = loginVM.estado) {
-
                 is EstadoLogin.Login -> {
                     LoginScreen { email, pass ->
                         loginVM.login(email, pass)
                     }
                 }
-
                 is EstadoLogin.Admin -> {
 
                     when (pantalla) {
@@ -65,20 +67,24 @@ class MainActivity : ComponentActivity() {
                         Pantalla.PEDIDOS -> {
                             PedidosAdminScreen(
                                 onBack = { pantalla = Pantalla.INVENTARIO },
+                                onLogout = {
+                                    loginVM.logout()
+                                },
                                 onPedidoClick = { pedido ->
                                     println("Pedido ${pedido.id}")
                                 }
                             )
                         }
-
                     }
+
                 }
-
-
                 is EstadoLogin.Empleado -> {
-                    PedidoEmpleadoScreen()
+                    PedidoEmpleadoScreen(
+                        onLogout = {
+                            loginVM.logout()
+                        }
+                    )
                 }
-
                 is EstadoLogin.Error -> {
                     LoginScreen { email, pass ->
                         loginVM.login(email, pass)
@@ -136,59 +142,100 @@ suspend fun eliminarInventario(id: String) {
         }
 
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PedidoEmpleadoScreen() {
+fun PedidoEmpleadoScreen(
+    onLogout: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        TextButton(onClick = {
+            scope.launch {
+                logout()
+            }
+        }) {
+            Text("Cerrar sesión")
+        }
+    }
+
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
     )
     if (pedidoViewModel.cargando) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
     }
-
-    Column(Modifier.fillMaxSize()) {
-
-        Text(
-            "Catálogo de productos",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-
-        LazyColumn(
-            modifier = Modifier.weight(1f)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Inventario") },
+                actions = {
+                    IconButton(onClick = {
+                        scope.launch {
+                            logout()
+                        }
+                    }) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
         ) {
-            items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
-                ProductoCard(
-                    item = item,
-                    onAgregar = { cant ->
-                        pedidoViewModel.agregarAlCarrito(item, cant)
+            // TODO lo que ya tenías
+                Text(
+                    "Catálogo de productos",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
+                        ProductoCard(
+                            item = item,
+                            onAgregar = { cant ->
+                                pedidoViewModel.agregarAlCarrito(item, cant)
+                            }
+                        )
+                    }
+                }
+
+                Divider()
+
+                val userId = supabase.auth.currentUserOrNull()?.id
+
+                CarritoResumen(
+                    carrito = pedidoViewModel.carrito,
+                    onConfirmar = {
+                        if (userId == null) return@CarritoResumen
+                        val emailUsuario =
+                            supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                        pedidoViewModel.confirmarPedido(
+                            userId = userId,
+                            onOk = {
+                                // Pedido creado correctamente
+                            },
+                            email = emailUsuario,//aqui el error
+                            onError = { error ->
+                                // Mostrar error (stock insuficiente, etc)
+                            }
+                        )
                     }
                 )
+
             }
         }
-
-        Divider()
-
-        val userId = supabase.auth.currentUserOrNull()?.id
-
-        CarritoResumen(
-            carrito = pedidoViewModel.carrito,
-            onConfirmar = {
-                if (userId == null) return@CarritoResumen
-                val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-                pedidoViewModel.confirmarPedido(
-                    userId = userId,
-                    onOk = {
-                        // Pedido creado correctamente
-                    },
-                    email = emailUsuario,//aqui el error
-                    onError = { error ->
-                        // Mostrar error (stock insuficiente, etc)
-                    }
-                )
-            }
-        )
-
-    }
 }
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
@@ -229,6 +276,9 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             Text("Ingresar")
         }
     }
+}
+suspend fun logout() {
+    supabase.auth.signOut()
 }
 @Composable
 fun InventarioScreen(

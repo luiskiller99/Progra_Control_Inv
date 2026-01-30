@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,16 +16,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidosAdminScreen(
     onBack: () -> Unit,
-    onPedidoClick: (Pedido) -> Unit,
+    onLogout: () -> Unit,
+    onPedidoClick: (PedidoUI) -> Unit,
     viewModel: PedidoAdminViewModel = viewModel()
-)
-{
+) {
     val pedidos by viewModel._listaPedidos.collectAsState()
+
     LaunchedEffect(pedidos) {
         Log.d("UI_DEBUG", "Pedidos recibidos en UI: ${pedidos.size}")
     }
@@ -36,13 +38,22 @@ fun PedidosAdminScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
+                    }
                 }
             )
         }
     ) { padding ->
 
         if (viewModel.cargando) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(padding)
+            )
         }
 
         if (pedidos.isEmpty()) {
@@ -74,7 +85,6 @@ fun PedidosAdminScreen(
                 }
             }
         }
-
     }
 }
 
