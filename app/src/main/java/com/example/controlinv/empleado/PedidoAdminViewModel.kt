@@ -13,6 +13,8 @@ import com.example.controlinv.empleado.DetallePedido
 import com.example.controlinv.Inventario
 import com.example.controlinv.auth.supabase
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
 @Serializable
 data class PedidoUI(
     val id: String,
@@ -30,18 +32,17 @@ data class Pedido(
     val empleado_email: String? = null
 )
 class PedidoAdminViewModel : ViewModel() {
+
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
+    val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
+
     var cargando by mutableStateOf(false)
         private set
-    init {cargarPedidos() }
-    fun aceptarPedido(pedidoId: String) = viewModelScope.launch {
-        supabase.from("pedidos")
-            .update(mapOf("estado" to "ACEPTADO")) {
-                filter { eq("id", pedidoId) }
-            }
+
+    init {
         cargarPedidos()
     }
-    fun rechazarPedido(pedidoId: String) = viewModelScope.launch {}
+
     fun cargarPedidos() {
         viewModelScope.launch {
             try {
@@ -64,20 +65,19 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<Inventario>()
                     .associateBy { it.id }
 
-
-
                 val pedidosUI = pedidos.map { pedido ->
+
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
                             val nombre = inventario[det.producto_id]?.descripcion
-                                ?: "Producto desconocido"
+                                ?: "Producto"
                             "${det.cantidad} x $nombre"
                         }
 
                     PedidoUI(
                         id = pedido.id,
-                        empleadoEmail = pedido.empleado_email ?: "Empleado desconocido", // 🔥 DIRECTO
+                        empleadoEmail = pedido.empleado_email ?: "Desconocido",
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         productos = productos
@@ -89,9 +89,77 @@ class PedidoAdminViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 cargando = false
-                Log.e("PEDIDOS", "Error cargando pedidos", e)
+                Log.e("ADMIN_PEDIDOS", "Error cargando pedidos", e)
             }
         }
     }
 
+    fun aceptarPedido(pedidoId: String) {
+        viewModelScope.launch {
+            try {
+                supabase
+                    .from("pedidos")
+                    .update(
+                        mapOf(
+                            "estado" to "ACEPTADO"
+                        )
+                    ) {
+                        filter {
+                            eq("id", pedidoId)
+                        }
+                    }
+
+                // refrescar lista
+                cargarPedidos()
+
+            } catch (e: Exception) {
+                Log.e("ADMIN", "Error aceptando pedido", e)
+            }
+        }
+    }
+
+    fun rechazarPedido(pedidoId: String) {
+        viewModelScope.launch {
+            try {
+                supabase
+                    .from("pedidos")
+                    .update(
+                        mapOf(
+                            "estado" to "RECHAZADO"
+                        )
+                    ) {
+                        filter {
+                            eq("id", pedidoId)
+                        }
+                    }
+
+                // refrescar lista
+                cargarPedidos()
+
+            } catch (e: Exception) {
+                Log.e("ADMIN", "Error rechazando pedido", e)
+            }
+        }
+    }
+
+
+    private fun actualizarEstado(pedidoId: String, nuevoEstado: String) {
+        viewModelScope.launch {
+            try {
+                supabase
+                    .from("pedidos")
+                    .update(
+                        mapOf("estado" to nuevoEstado)
+                    ) {
+                        filter { eq("id", pedidoId) }
+                    }
+
+                cargarPedidos()
+
+            } catch (e: Exception) {
+                Log.e("ADMIN_PEDIDOS", "Error actualizando pedido", e)
+            }
+        }
+    }
 }
+
