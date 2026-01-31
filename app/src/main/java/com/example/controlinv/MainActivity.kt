@@ -126,6 +126,7 @@ enum class Pantalla {
 fun PedidoEmpleadoScreen(
     onLogout: () -> Unit
 ) {
+    Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
     val scope = rememberCoroutineScope()
     Row(
         modifier = Modifier
@@ -193,30 +194,36 @@ fun PedidoEmpleadoScreen(
 
                 val userId = supabase.auth.currentUserOrNull()?.id
             val context = LocalContext.current
-                CarritoResumen(
-                    carrito = pedidoViewModel.carrito,
-                    onConfirmar = {
-                        if (userId == null) return@CarritoResumen
-                        val emailUsuario =
-                            supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-                        pedidoViewModel.confirmarPedido(
-                            userId = userId,
-                            onOk = {
-                                // Pedido creado correctamente
-                            },
-                            email = emailUsuario,//aqui el error
-                            onError = { error ->
-                                Toast.makeText(
-                                    context,
-                                    error,
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        )
+            CarritoResumen(
+                carrito = pedidoViewModel.carrito,
+                onSumar = { id ->
+                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
+                    if (item != null) {
+                        pedidoViewModel.agregarAlCarrito(item.producto, 1)
                     }
-                )
+                },
+                onRestar = { id ->
+                    pedidoViewModel.restarDelCarrito(id)
+                },
+                onEliminar = { id ->
+                    pedidoViewModel.quitarDelCarrito(id)
+                },
+                onConfirmar = {
+                    if (userId == null) return@CarritoResumen
+                    val emailUsuario =
+                        supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
 
-            }
+                    pedidoViewModel.confirmarPedido(
+                        userId = userId,
+                        email = emailUsuario,
+                        onOk = {},
+                        onError = {}
+                    )
+                }
+            )
+
+
+        }
         }
 }
 @Composable
@@ -640,6 +647,9 @@ fun ProductoCard(
 @Composable
 fun CarritoResumen(
     carrito: List<ItemCarrito>,
+    onSumar: (String) -> Unit,
+    onRestar: (String) -> Unit,
+    onEliminar: (String) -> Unit,
     onConfirmar: () -> Unit
 ) {
     Column(
@@ -648,20 +658,51 @@ fun CarritoResumen(
             .padding(12.dp)
     ) {
 
-        Text("Carrito (${carrito.size})")
+        Text(
+            "Carrito (${carrito.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
 
-        carrito.forEach {
-            Text("• ${it.producto.codigo} x ${it.cantidad}")
+        Spacer(Modifier.height(8.dp))
+
+        carrito.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    "${item.producto.descripcion}",
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = { onRestar(item.producto.id!!) }) {
+                    Text("➖")
+                }
+
+                Text("${item.cantidad}")
+
+                IconButton(onClick = { onSumar(item.producto.id!!) }) {
+                    Text("➕")
+                }
+
+                IconButton(onClick = { onEliminar(item.producto.id!!) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                }
+            }
         }
+
+        Spacer(Modifier.height(12.dp))
 
         Button(
             onClick = onConfirmar,
             enabled = carrito.isNotEmpty(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text("Confirmar pedido")
         }
     }
 }
+

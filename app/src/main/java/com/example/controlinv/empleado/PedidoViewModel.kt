@@ -79,11 +79,33 @@ class PedidoViewModel(
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
-        val existente = carrito.find { it.producto.id == item.id }
-        if (existente != null) {
-            existente.cantidad += cantidad
+        val index = carrito.indexOfFirst { it.producto.id == item.id }
+
+        if (index >= 0) {
+            val actual = carrito[index]
+            carrito[index] = actual.copy(
+                cantidad = actual.cantidad + cantidad
+            )
         } else {
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
+    fun quitarDelCarrito(productoId: String) {
+        carrito.removeAll { it.producto.id == productoId }
+    }
+
+    fun restarDelCarrito(productoId: String) {
+        val index = carrito.indexOfFirst { it.producto.id == productoId }
+        if (index >= 0) {
+            val actual = carrito[index]
+            if (actual.cantidad > 1) {
+                carrito[index] = actual.copy(
+                    cantidad = actual.cantidad - 1
+                )
+            } else {
+                carrito.removeAt(index)
+            }
+        }
+    }
+
 }
