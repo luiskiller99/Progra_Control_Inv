@@ -60,8 +60,8 @@ class PedidoViewModel(
                 carrito.clear()
                 onOk()
                 } catch (e: Exception) {
-                    Log.e("PEDIDO", "Error confirmando pedido", e)
-                    onError(e.message ?: "Error desconocido")
+                    val mensaje = e.message ?: "Error desconocido al crear pedido"
+                    onError(mensaje)
                 }
             }
 

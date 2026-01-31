@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.serialization.Serializable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
@@ -191,7 +192,7 @@ fun PedidoEmpleadoScreen(
                 Divider()
 
                 val userId = supabase.auth.currentUserOrNull()?.id
-
+            val context = LocalContext.current
                 CarritoResumen(
                     carrito = pedidoViewModel.carrito,
                     onConfirmar = {
@@ -205,7 +206,11 @@ fun PedidoEmpleadoScreen(
                             },
                             email = emailUsuario,//aqui el error
                             onError = { error ->
-                                // Mostrar error (stock insuficiente, etc)
+                                Toast.makeText(
+                                    context,
+                                    error,
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         )
                     }
