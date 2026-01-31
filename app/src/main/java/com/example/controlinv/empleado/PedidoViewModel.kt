@@ -1,4 +1,5 @@
 package com.example.controlinv.empleado
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,8 +35,8 @@ class PedidoViewModel(
         onOk: () -> Unit,
         onError: (String) -> Unit
     ) {
-        try {
             viewModelScope.launch {
+                try {
                 val itemsJson = JsonArray(
                     carrito.map {
                         JsonObject(
@@ -58,10 +59,12 @@ class PedidoViewModel(
                 )
                 carrito.clear()
                 onOk()
+                } catch (e: Exception) {
+                    Log.e("PEDIDO", "Error confirmando pedido", e)
+                    onError(e.message ?: "Error desconocido")
+                }
             }
-        }catch (e: Exception) {
-            onError(e.message ?: "Error creando pedido")
-        }
+
     }
     private fun cargarInventario() {
         viewModelScope.launch {
