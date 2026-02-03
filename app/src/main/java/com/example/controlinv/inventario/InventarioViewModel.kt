@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.Inventario
+import com.example.controlinv.InventarioLog
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
@@ -20,10 +21,27 @@ class InventarioViewModel : ViewModel() {
     private var inventarioCompleto = listOf<Inventario>()
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
+    var logs by mutableStateOf<List<InventarioLog>>(emptyList())
+        private set
+
 
     init {
         cargarInventario()
     }
+    /*fun cargarInventarioLogs() {
+        viewModelScope.launch {
+            try {
+                logs = supabase
+                    .from("inventario_logs")
+                    .select()
+                    .order("created_at", ascending = false)
+                    .decodeList()
+            } catch (e: Exception) {
+                Log.e("LOGS", "Error cargando logs", e)
+            }
+        }
+    }*/
+
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
@@ -69,7 +87,6 @@ class InventarioViewModel : ViewModel() {
     }
     fun guardarFila(itemNuevo: Inventario) {
         val itemAnterior = inventario.find { it.id == itemNuevo.id } ?: return
-
         viewModelScope.launch {
             try {
                 // 1️⃣ actualizar inventario
@@ -78,13 +95,10 @@ class InventarioViewModel : ViewModel() {
                     .update(itemNuevo) {
                         filter { eq("id", itemNuevo.id!!) }
                     }
-
                 // 2️⃣ obtener email del admin logueado
                 val adminEmail =
                     supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-
                 // 3️⃣ guardar log (ANTES vs DESPUÉS)
-                /**AQUI ES DONDE SE CAE*/
                 // convertir objetos a JSON
                 val itemAnteriorJson = Json.encodeToString(itemAnterior)
                 val itemNuevoJson = Json.encodeToString(itemNuevo)
@@ -99,11 +113,8 @@ class InventarioViewModel : ViewModel() {
                             "item_nuevo" to itemNuevoJson
                         )
                     )
-
-                //**aqui termina codigo donde se cae*/
                 // 4️⃣ refrescar lista
                 cargarInventario()
-
             } catch (e: Exception) {
                 Log.e("INVENTARIO", "Error guardando inventario", e)
             }
@@ -116,33 +127,6 @@ class InventarioViewModel : ViewModel() {
         }
     }
 }
-/*
-suspend fun actualizarInventario(
-    itemNuevo: Inventario,
-    itemAnterior: Inventario,
-    adminEmail: String
-) {
-    if (itemNuevo.id == null) return
-
-    // 1️⃣ Actualizar inventario
-    supabase
-        .from("inventario")
-        .update(itemNuevo) {
-            filter { eq("id", itemNuevo.id) }
-        }
-
-    // 2️⃣ Guardar log (JSON PURO)
-    supabase
-        .from("inventario_logs")
-        .insert(
-            mapOf(
-                "producto_id" to itemNuevo.id,
-                "admin_email" to adminEmail,
-                "item_anterior" to Json.encodeToString(itemAnterior),
-                "item_nuevo" to Json.encodeToString(itemNuevo)
-            )
-        )
-}*/
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
         .from("inventario")
