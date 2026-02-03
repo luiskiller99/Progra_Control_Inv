@@ -1,5 +1,4 @@
 package com.example.controlinv.inventario
-
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,7 +12,6 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
 class InventarioViewModel : ViewModel() {
     var hayCambios by mutableStateOf(false)
         private set
@@ -86,17 +84,23 @@ class InventarioViewModel : ViewModel() {
                     supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
 
                 // 3️⃣ guardar log (ANTES vs DESPUÉS)
+                /**AQUI ES DONDE SE CAE*/
+                // convertir objetos a JSON
+                val itemAnteriorJson = Json.encodeToString(itemAnterior)
+                val itemNuevoJson = Json.encodeToString(itemNuevo)
+                // 4️⃣ insertar log
                 supabase
                     .from("inventario_logs")
                     .insert(
                         mapOf(
                             "producto_id" to itemNuevo.id,
                             "admin_email" to adminEmail,
-                            "item_anterior" to itemAnterior,
-                            "item_nuevo" to itemNuevo
+                            "item_anterior" to itemAnteriorJson,
+                            "item_nuevo" to itemNuevoJson
                         )
                     )
 
+                //**aqui termina codigo donde se cae*/
                 // 4️⃣ refrescar lista
                 cargarInventario()
 
@@ -105,16 +109,14 @@ class InventarioViewModel : ViewModel() {
             }
         }
     }
-
     fun descartarFila(id: String) {
         val original = inventarioCompleto.find { it.id == id } ?: return
         inventario = inventario.map {
             if (it.id == id) original.copy() else it
         }
     }
-
-
 }
+/*
 suspend fun actualizarInventario(
     itemNuevo: Inventario,
     itemAnterior: Inventario,
@@ -140,9 +142,7 @@ suspend fun actualizarInventario(
                 "item_nuevo" to Json.encodeToString(itemNuevo)
             )
         )
-}
-
-
+}*/
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
         .from("inventario")
