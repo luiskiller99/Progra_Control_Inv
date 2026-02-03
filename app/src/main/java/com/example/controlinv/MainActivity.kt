@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -66,6 +67,10 @@ class MainActivity : ComponentActivity() {
                             InventarioScreen(
                                 onVerPedidos = {
                                     pantalla = Pantalla.PEDIDOS
+                                },
+                                onLogout = {
+                                    loginVM.logout()
+                                    pantalla = Pantalla.INVENTARIO
                                 }
                             )
                         }
@@ -154,11 +159,7 @@ fun PedidoEmpleadoScreen(
             TopAppBar(
                 title = { Text("Inventario") },
                 actions = {
-                    IconButton(onClick = {
-                        scope.launch {
-                            logout()
-                        }
-                    }) {
+                    IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
                     }
                 }
@@ -170,7 +171,6 @@ fun PedidoEmpleadoScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            // TODO lo que ya tenías
                 Text(
                     "Catálogo de productos",
                     style = MaterialTheme.typography.titleLarge,
@@ -266,16 +266,31 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         }
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),
-    onVerPedidos: () -> Unit
+    onVerPedidos: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Inventario") },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Cerrar sesión"
+                        )
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             Column {
                 FloatingActionButton(

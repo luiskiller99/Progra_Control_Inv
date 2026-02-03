@@ -41,7 +41,7 @@ fun PedidosAdminScreen(
                 },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar sesión")
                     }
                 }
             )

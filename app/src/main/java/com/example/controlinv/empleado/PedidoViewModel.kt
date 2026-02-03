@@ -93,7 +93,6 @@ class PedidoViewModel(
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
-
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -107,5 +106,4 @@ class PedidoViewModel(
             }
         }
     }
-
 }

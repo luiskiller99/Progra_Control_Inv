@@ -33,6 +33,7 @@ data class Pedido(
     val empleado_id: String,
     val empleado_email: String? = null
 )
+
 class PedidoAdminViewModel : ViewModel() {
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
@@ -104,7 +105,6 @@ class PedidoAdminViewModel : ViewModel() {
                 }
         }
     }
-
     fun rechazarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
@@ -119,8 +119,6 @@ class PedidoAdminViewModel : ViewModel() {
             }
         }
     }
-
-
     private fun actualizarEstado(pedidoId: String, nuevoEstado: String) {
         viewModelScope.launch {
             try {

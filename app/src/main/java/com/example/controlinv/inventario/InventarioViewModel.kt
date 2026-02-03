@@ -1,5 +1,6 @@
 package com.example.controlinv.inventario
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,6 +11,8 @@ import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class InventarioViewModel : ViewModel() {
     var hayCambios by mutableStateOf(false)
@@ -45,12 +48,12 @@ class InventarioViewModel : ViewModel() {
             inventarioCompleto
                 .filter {
                     it.codigo?.contains(texto, true) == true ||
-                            it.descripcion?.contains(texto, true) == true
+                            it.descripcion?.contains(texto, true) == true ||
+                            it.clasificacion?.contains(texto, true) == true
                 }
                 .map { it.copy() }
         }
     }
-
     fun agregar(item: Inventario) {
         viewModelScope.launch {
             val creado = insertarInventario(item)
@@ -66,19 +69,43 @@ class InventarioViewModel : ViewModel() {
             hayCambios = false
         }
     }
-    fun guardarFila(item: Inventario) {
+    fun guardarFila(itemNuevo: Inventario) {
+        val itemAnterior = inventario.find { it.id == itemNuevo.id } ?: return
+
         viewModelScope.launch {
-            if (item.id == null) return@launch
+            try {
+                // 1️⃣ actualizar inventario
+                supabase
+                    .from("inventario")
+                    .update(itemNuevo) {
+                        filter { eq("id", itemNuevo.id!!) }
+                    }
 
-            actualizarInventario(item)
+                // 2️⃣ obtener email del admin logueado
+                val adminEmail =
+                    supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
 
-            // sincroniza memoria
-            inventarioCompleto = inventarioCompleto.map {
-                if (it.id == item.id) item else it
+                // 3️⃣ guardar log (ANTES vs DESPUÉS)
+                supabase
+                    .from("inventario_logs")
+                    .insert(
+                        mapOf(
+                            "producto_id" to itemNuevo.id,
+                            "admin_email" to adminEmail,
+                            "item_anterior" to itemAnterior,
+                            "item_nuevo" to itemNuevo
+                        )
+                    )
+
+                // 4️⃣ refrescar lista
+                cargarInventario()
+
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error guardando inventario", e)
             }
-            inventario = inventarioCompleto.map { it.copy() }
         }
     }
+
     fun descartarFila(id: String) {
         val original = inventarioCompleto.find { it.id == id } ?: return
         inventario = inventario.map {
@@ -88,15 +115,34 @@ class InventarioViewModel : ViewModel() {
 
 
 }
-suspend fun actualizarInventario(item: Inventario) {
-    if (item.id == null) return
+suspend fun actualizarInventario(
+    itemNuevo: Inventario,
+    itemAnterior: Inventario,
+    adminEmail: String
+) {
+    if (itemNuevo.id == null) return
 
+    // 1️⃣ Actualizar inventario
     supabase
         .from("inventario")
-        .update(item) {
-            filter { eq("id", item.id) }
+        .update(itemNuevo) {
+            filter { eq("id", itemNuevo.id) }
         }
+
+    // 2️⃣ Guardar log (JSON PURO)
+    supabase
+        .from("inventario_logs")
+        .insert(
+            mapOf(
+                "producto_id" to itemNuevo.id,
+                "admin_email" to adminEmail,
+                "item_anterior" to Json.encodeToString(itemAnterior),
+                "item_nuevo" to Json.encodeToString(itemNuevo)
+            )
+        )
 }
+
+
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
         .from("inventario")
