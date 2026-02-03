@@ -12,6 +12,8 @@ import android.util.Log
 import com.example.controlinv.empleado.DetallePedido
 import com.example.controlinv.Inventario
 import com.example.controlinv.auth.supabase
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -32,17 +34,14 @@ data class Pedido(
     val empleado_email: String? = null
 )
 class PedidoAdminViewModel : ViewModel() {
-
     val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
 
     var cargando by mutableStateOf(false)
         private set
-
     init {
         cargarPedidos()
     }
-
     fun cargarPedidos() {
         viewModelScope.launch {
             try {
@@ -93,47 +92,26 @@ class PedidoAdminViewModel : ViewModel() {
             }
         }
     }
-
     fun aceptarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
-                supabase
-                    .from("pedidos")
-                    .update(
-                        mapOf(
-                            "estado" to "ACEPTADO"
-                        )
-                    ) {
-                        filter {
-                            eq("id", pedidoId)
-                        }
-                    }
-
-                // refrescar lista
-                cargarPedidos()
-
-            } catch (e: Exception) {
-                Log.e("ADMIN", "Error aceptando pedido", e)
-            }
+                supabase.postgrest.rpc(
+                "aceptar_pedido",
+                mapOf("p_pedido_id" to pedidoId)
+                )
+                cargarPedidos()} catch (e: Exception) {
+                    Log.e("ADMIN", "Error aceptando pedido", e)
+                }
         }
     }
 
     fun rechazarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
-                supabase
-                    .from("pedidos")
-                    .update(
-                        mapOf(
-                            "estado" to "RECHAZADO"
-                        )
-                    ) {
-                        filter {
-                            eq("id", pedidoId)
-                        }
-                    }
-
-                // refrescar lista
+                supabase.postgrest.rpc(
+                    "rechazar_pedido",
+                    mapOf("p_pedido_id" to pedidoId)
+                )
                 cargarPedidos()
 
             } catch (e: Exception) {
