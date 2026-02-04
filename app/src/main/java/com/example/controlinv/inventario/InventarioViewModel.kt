@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.Inventario
+import com.example.controlinv.Main.Inventario
 import com.example.controlinv.InventarioLog
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
@@ -21,26 +21,25 @@ class InventarioViewModel : ViewModel() {
     private var inventarioCompleto = listOf<Inventario>()
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
-    var logs by mutableStateOf<List<InventarioLog>>(emptyList())
+    var inventarioLogs by mutableStateOf<List<InventarioLog>>(emptyList())
         private set
-
-
     init {
         cargarInventario()
     }
-    /*fun cargarInventarioLogs() {
+    fun cargarInventarioLogs() {
         viewModelScope.launch {
             try {
-                logs = supabase
+                val logsData = supabase
                     .from("inventario_logs")
                     .select()
-                    .order("created_at", ascending = false)
-                    .decodeList()
+                    .decodeList<InventarioLog>()
+                inventarioLogs = logsData
             } catch (e: Exception) {
-                Log.e("LOGS", "Error cargando logs", e)
+                Log.e("LOGS", "Error cargando inventario_logs", e)
             }
         }
-    }*/
+    }
+
 
     private fun cargarInventario() {
         viewModelScope.launch {

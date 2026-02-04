@@ -1,5 +1,6 @@
 package com.example.controlinv
 
+import com.example.controlinv.Main.Inventario
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -9,5 +10,5 @@ data class InventarioLog(
     val admin_email: String,
     val item_anterior: Inventario,
     val item_nuevo: Inventario,
-    val created_at: String
+    val fecha: String
 )

@@ -1,4 +1,4 @@
-package com.example.controlinv
+package com.example.controlinv.Main
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -30,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
+import com.example.controlinv.InventarioLogsScreen
+import com.example.controlinv.R
 import com.example.controlinv.inventario.InventarioViewModel
 import com.example.controlinv.inventario.logout
 import com.example.controlinv.empleado.ItemCarrito
@@ -45,14 +47,17 @@ private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
+enum class AdminTab {
+    INVENTARIO,
+    PEDIDOS,
+    LOGS
+}
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var pantalla by remember { mutableStateOf(Pantalla.INVENTARIO) }
-
             val loginVM: LoginViewModel = viewModel()
-
             when (val estado = loginVM.estado) {
                 is EstadoLogin.Login -> {
                     LoginScreen { email, pass ->
@@ -60,33 +65,50 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 is EstadoLogin.Admin -> {
+                    var section by remember { mutableStateOf(AdminSection.INVENTARIO) }
 
-                    when (pantalla) {
-
-                        Pantalla.INVENTARIO -> {
-                            InventarioScreen(
-                                onVerPedidos = {
-                                    pantalla = Pantalla.PEDIDOS
-                                },
-                                onLogout = {
-                                    loginVM.logout()
-                                    pantalla = Pantalla.INVENTARIO
-                                }
-                            )
+                    Column {
+                        // Barra de secciones
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            modifier = Modifier.fillMaxWidth().padding(8.dp)
+                        ) {
+                            TextButton(onClick = { section = AdminSection.INVENTARIO }) {
+                                Text("Inventario")
+                            }
+                            TextButton(onClick = { section = AdminSection.PEDIDOS }) {
+                                Text("Pedidos")
+                            }
+                            TextButton(onClick = { section = AdminSection.LOGS }) {
+                                Text("Ediciones")
+                            }
+                            TextButton(onClick = {
+                                loginVM.logout()
+                            }) {
+                                Text("Salir")
+                            }
                         }
 
-                        Pantalla.PEDIDOS -> {
-                            PedidosAdminScreen(
-                                onBack = { pantalla = Pantalla.INVENTARIO },
-                                onLogout = { loginVM.logout() },
-                                onPedidoClick = { pedido ->
-                                    println("Pedido ${pedido.id}")
-                                }
-                            )
+                        // Contenido según sección
+                        when (section) {
+                            AdminSection.INVENTARIO -> {
+                                InventarioScreen(
+                                    viewModel = viewModel(), // mantén tu InventarioViewModel
+                                    onVerPedidos = { /* no usado aquí */ }
+                                )
+                            }
+                            AdminSection.PEDIDOS -> {
+                                PedidosAdminScreen(
+                                    onBack = { /* si quieres un back */ },
+                                    onLogout = { loginVM.logout() },
+                                    onPedidoClick = { }
+                                )
+                            }
+                            AdminSection.LOGS -> {
+                                InventarioLogsScreen()
+                            }
                         }
                     }
-
-
                 }
                 is EstadoLogin.Empleado -> {
                     PedidoEmpleadoScreen(
@@ -270,7 +292,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel(),
-    onVerPedidos: () -> Unit,
+    //onVerPedidos: () -> Unit,
     onLogout: () -> Unit
 ) {
     val scrollHorizontal = rememberScrollState()

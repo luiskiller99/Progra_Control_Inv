@@ -9,8 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.collections.mapOf
 import android.util.Log
-import com.example.controlinv.empleado.DetallePedido
-import com.example.controlinv.Inventario
+import com.example.controlinv.Main.Inventario
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -25,6 +24,16 @@ data class PedidoUI(
     val estado: String,
     val productos: List<String>
 )
+@kotlinx.serialization.Serializable
+data class InventarioLog(
+    val id: String,
+    val producto_id: String,
+    val admin_email: String,
+    val item_anterior: Inventario,
+    val item_nuevo: Inventario,
+    val fecha: String
+)
+
 @Serializable
 data class Pedido(
     val id: String,
