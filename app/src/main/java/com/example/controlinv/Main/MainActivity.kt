@@ -42,21 +42,32 @@ import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
 import kotlinx.coroutines.launch
+import androidx.compose.material.*
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
-enum class AdminTab {
+@Serializable
+data class Inventario(
+    val id: String? = null,
+    val codigo: String? ,
+    val descripcion: String? ,
+    val cantidad: Int? ,
+    val clasificacion: String? ,
+    val extra1: String? = null,
+    val extra2: String? = null
+)
+enum class AdminTab  {
     INVENTARIO,
     PEDIDOS,
     LOGS
 }
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var pantalla by remember { mutableStateOf(Pantalla.INVENTARIO) }
             val loginVM: LoginViewModel = viewModel()
             when (val estado = loginVM.estado) {
                 is EstadoLogin.Login -> {
@@ -65,47 +76,58 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 is EstadoLogin.Admin -> {
-                    var section by remember { mutableStateOf(AdminSection.INVENTARIO) }
 
-                    Column {
-                        // Barra de secciones
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            modifier = Modifier.fillMaxWidth().padding(8.dp)
-                        ) {
-                            TextButton(onClick = { section = AdminSection.INVENTARIO }) {
-                                Text("Inventario")
-                            }
-                            TextButton(onClick = { section = AdminSection.PEDIDOS }) {
-                                Text("Pedidos")
-                            }
-                            TextButton(onClick = { section = AdminSection.LOGS }) {
-                                Text("Ediciones")
-                            }
-                            TextButton(onClick = {
-                                loginVM.logout()
-                            }) {
-                                Text("Salir")
-                            }
+                    var adminTab by remember { mutableStateOf(AdminTab.INVENTARIO) }
+
+                    Scaffold(
+                        topBar = {
+                            TopAppBar(
+                                title = {},
+                                actions = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(onClick = { adminTab = AdminTab.INVENTARIO }) {
+                                            Text("Inventario")
+                                        }
+                                        TextButton(onClick = { adminTab = AdminTab.PEDIDOS }) {
+                                            Text("Pedidos")
+                                        }
+                                        TextButton(onClick = { adminTab = AdminTab.LOGS }) {
+                                            Text("Ediciones")
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        IconButton(onClick = { loginVM.logout() }) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ExitToApp,
+                                                contentDescription = "Salir"
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            )
                         }
+                    )
+                    { padding ->
 
-                        // Contenido según sección
-                        when (section) {
-                            AdminSection.INVENTARIO -> {
-                                InventarioScreen(
-                                    viewModel = viewModel(), // mantén tu InventarioViewModel
-                                    onVerPedidos = { /* no usado aquí */ }
-                                )
-                            }
-                            AdminSection.PEDIDOS -> {
-                                PedidosAdminScreen(
-                                    onBack = { /* si quieres un back */ },
-                                    onLogout = { loginVM.logout() },
-                                    onPedidoClick = { }
-                                )
-                            }
-                            AdminSection.LOGS -> {
-                                InventarioLogsScreen()
+                        Box(Modifier.padding(padding)) {
+                            when (adminTab) {
+                                AdminTab.INVENTARIO -> {
+                                    InventarioScreen()
+                                }
+                                AdminTab.PEDIDOS -> {
+                                    PedidosAdminScreen(
+                                        onBack = { adminTab = AdminTab.INVENTARIO },
+                                        onLogout = { loginVM.logout() },
+                                        onPedidoClick = { }
+                                    )
+                                }
+                                AdminTab.LOGS -> {
+                                    InventarioLogsScreen()
+                                }
                             }
                         }
                     }
@@ -134,20 +156,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-@Serializable
-data class Inventario(
-    val id: String? = null,
-    val codigo: String? ,
-    val descripcion: String? ,
-    val cantidad: Int? ,
-    val clasificacion: String? ,
-    val extra1: String? = null,
-    val extra2: String? = null
-)
-enum class Pantalla {
-    INVENTARIO,
-    PEDIDOS
-}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -291,49 +300,23 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen(
-    viewModel: InventarioViewModel = viewModel(),
-    //onVerPedidos: () -> Unit,
-    onLogout: () -> Unit
+    viewModel: InventarioViewModel = viewModel()
 ) {
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Inventario") },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar sesión"
-                        )
-                    }
-                }
-            )
-        },
         floatingActionButton = {
-            Column {
-                FloatingActionButton(
-                    onClick = onVerPedidos
-                ) {
-                    Text("Pedidos")
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                FloatingActionButton(
-                    onClick = { creando = true }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Agregar")
-                }
+            FloatingActionButton(
+                onClick = { creando = true }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar")
             }
         }
     ) { padding ->
 
-
-    Column(
+        Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
@@ -370,7 +353,6 @@ fun InventarioScreen(
         }
     }
 
-    // Dialog crear
     if (creando) {
         NuevoInventarioDialog(
             onSave = {
@@ -381,7 +363,6 @@ fun InventarioScreen(
         )
     }
 
-    // Dialog eliminar
     if (eliminarId != null) {
         AlertDialog(
             onDismissRequest = { eliminarId = null },
@@ -408,6 +389,7 @@ fun InventarioScreen(
         )
     }
 }
+
 @Composable
 fun BuscadorInventario(viewModel: InventarioViewModel) {
     var texto by remember { mutableStateOf("") }
