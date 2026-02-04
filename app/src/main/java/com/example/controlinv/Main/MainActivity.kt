@@ -76,58 +76,45 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 is EstadoLogin.Admin -> {
-
                     var adminTab by remember { mutableStateOf(AdminTab.INVENTARIO) }
-
-                    Scaffold(
-                        topBar = {
-                            TopAppBar(
-                                title = {},
-                                actions = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        TextButton(onClick = { adminTab = AdminTab.INVENTARIO }) {
-                                            Text("Inventario")
-                                        }
-                                        TextButton(onClick = { adminTab = AdminTab.PEDIDOS }) {
-                                            Text("Pedidos")
-                                        }
-                                        TextButton(onClick = { adminTab = AdminTab.LOGS }) {
-                                            Text("Ediciones")
-                                        }
-                                        Spacer(Modifier.width(8.dp))
-                                        IconButton(onClick = { loginVM.logout() }) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.ExitToApp,
-                                                contentDescription = "Salir"
-                                            )
-                                        }
-                                    }
-                                },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                )
-                            )
-                        }
-                    )
-                    { padding ->
-
-                        Box(Modifier.padding(padding)) {
-                            when (adminTab) {
-                                AdminTab.INVENTARIO -> {
-                                    InventarioScreen()
+                    Scaffold { padding ->
+                        Column(
+                            modifier = Modifier
+                                .padding(padding)
+                                .fillMaxSize()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(35.dp) // 👈 AQUÍ controlas el tamaño REAL
+                                    .padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(onClick = { adminTab = AdminTab.INVENTARIO }) {
+                                    Text("Inventario")
                                 }
-                                AdminTab.PEDIDOS -> {
-                                    PedidosAdminScreen(
-                                        onBack = { adminTab = AdminTab.INVENTARIO },
-                                        onLogout = { loginVM.logout() },
-                                        onPedidoClick = { }
+                                TextButton(onClick = { adminTab = AdminTab.PEDIDOS }) {
+                                    Text("Pedidos")
+                                }
+                                TextButton(onClick = { adminTab = AdminTab.LOGS }) {
+                                    Text("Ediciones")
+                                }
+                                Spacer(Modifier.weight(1f))
+                                IconButton(onClick = { loginVM.logout() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ExitToApp,
+                                        contentDescription = "Salir"
                                     )
                                 }
-                                AdminTab.LOGS -> {
-                                    InventarioLogsScreen()
-                                }
+                            }
+                            when (adminTab) {
+                                AdminTab.INVENTARIO -> InventarioScreen()
+                                AdminTab.PEDIDOS -> PedidosAdminScreen(
+                                    onBack = { adminTab = AdminTab.INVENTARIO },
+                                    onLogout = { loginVM.logout() },
+                                    onPedidoClick = {}
+                                )
+                                AdminTab.LOGS -> InventarioLogsScreen()
                             }
                         }
                     }
@@ -178,7 +165,6 @@ fun PedidoEmpleadoScreen(
             Text("Cerrar sesión")
         }
     }
-
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
     )
@@ -318,7 +304,7 @@ fun InventarioScreen(
 
         Column(
             modifier = Modifier
-                .padding(padding)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
 
