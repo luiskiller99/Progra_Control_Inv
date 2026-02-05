@@ -109,11 +109,7 @@ class MainActivity : ComponentActivity() {
                             }
                             when (adminTab) {
                                 AdminTab.INVENTARIO -> InventarioScreen()
-                                AdminTab.PEDIDOS -> PedidosAdminScreen(
-                                    onBack = { adminTab = AdminTab.INVENTARIO },
-                                    onLogout = { loginVM.logout() },
-                                    onPedidoClick = {}
-                                )
+                                AdminTab.PEDIDOS -> PedidosAdminScreen()
                                 AdminTab.LOGS -> InventarioLogsScreen()
                             }
                         }
@@ -149,22 +145,6 @@ class MainActivity : ComponentActivity() {
 fun PedidoEmpleadoScreen(
     onLogout: () -> Unit
 ) {
-    Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
-    val scope = rememberCoroutineScope()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.End
-    ) {
-        TextButton(onClick = {
-            scope.launch {
-                logout()
-            }
-        }) {
-            Text("Cerrar sesión")
-        }
-    }
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
     )

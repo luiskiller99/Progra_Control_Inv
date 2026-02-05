@@ -1,4 +1,5 @@
 package com.example.controlinv.empleado
+import android.R.attr.padding
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,47 +20,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidosAdminScreen(
-    onBack: () -> Unit,
-    onLogout: () -> Unit,
-    onPedidoClick: (PedidoUI) -> Unit,
     viewModel: PedidoAdminViewModel = viewModel()
 ) {
     val pedidos by viewModel._listaPedidos.collectAsState()
-
-    LaunchedEffect(pedidos) {
-        Log.d("UI_DEBUG", "Pedidos recibidos en UI: ${pedidos.size}")
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Pedidos") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar sesión")
-                    }
-                }
-            )
-        }
-    ) { padding ->
 
         if (viewModel.cargando) {
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(padding)
+                    .padding(horizontal = 16.dp)
             )
         }
 
         if (pedidos.isEmpty()) {
             Box(
                 modifier = Modifier
-                    .padding(padding)
+                    .padding(horizontal = 16.dp)
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
@@ -68,7 +44,7 @@ fun PedidosAdminScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .padding(padding)
+                    .padding(horizontal = 16.dp)
                     .fillMaxSize()
             ) {
                 items(pedidos, key = { it.id }) { pedido ->
@@ -85,7 +61,7 @@ fun PedidosAdminScreen(
                 }
             }
         }
-    }
+
 }
 
 @Composable
