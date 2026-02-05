@@ -1,13 +1,10 @@
 package com.example.controlinv.empleado
-import android.R.attr.padding
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 enum class PedidoFiltro {
     ENVIADO,
-    ACEPTADOS,
-    RECHAZADOS
+    ACEPTADO,
+    RECHAZADO
 }
 @SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,10 +53,10 @@ fun PedidosAdminScreen(
                 TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
                     Text("Pendientes")
                 }
-                TextButton(onClick = { filtro = PedidoFiltro.ACEPTADOS }) {
+                TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO}) {
                     Text("Aceptados")
                 }
-                TextButton(onClick = { filtro = PedidoFiltro.RECHAZADOS }) {
+                TextButton(onClick = { filtro = PedidoFiltro.RECHAZADO }) {
                     Text("Rechazados")
                 }
             }
@@ -70,25 +67,54 @@ fun PedidosAdminScreen(
             ) {
                 val pedidosFiltrados = when (filtro) {
                     PedidoFiltro.ENVIADO -> pedidos.filter { it.estado == "ENVIADO" }
-                    PedidoFiltro.ACEPTADOS -> pedidos.filter { it.estado == "ACEPTADO" }
-                    PedidoFiltro.RECHAZADOS -> pedidos.filter { it.estado == "RECHAZADO" } }
-                items(pedidosFiltrados,key = { it.id }) { pedido ->
+                    PedidoFiltro.ACEPTADO-> pedidos.filter { it.estado == "ACEPTADO" }
+                    PedidoFiltro.RECHAZADO-> pedidos.filter { it.estado == "RECHAZADO" } }
+                items(pedidosFiltrados, key = { it.id }) { pedido ->
 
-                //items(pedidos, key = { it.id }) { pedido ->
-                    if (filtro == PedidoFiltro.ENVIADO) {
-                        Row {
-                            Button(onClick = { viewModel.aceptarPedido(pedido.id) }) {
-                                Text("Aceptar")
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Button(onClick = { viewModel.rechazarPedido(pedido.id) }) {
-                                Text("Rechazar")
-                            }
+                    val pedidoUI = PedidoUI(
+                        id = pedido.id,
+                        empleadoEmail = pedido.empleadoEmail,
+                                fecha = pedido.fecha,
+                        estado = pedido.estado,
+                        productos = pedido.productos.map { DetallePedido ->
+                            "${DetallePedido.toString()} x${DetallePedido.length}"
                         }
-                    }
-
-                    Divider()
+                    )
+                    //if (pedido.estado == "ENVIADO") {
+                        PedidoItem(
+                            pedido = pedidoUI,
+                            mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
+                            onAceptar = {
+                                if (pedido.estado == "ENVIADO") {
+                                    viewModel.aceptarPedido(pedido.id)
+                                }
+                            },
+                            onRechazar = {
+                                if (pedido.estado == "ENVIADO") {
+                                    viewModel.rechazarPedido(pedido.id)
+                                }
+                            }
+                        )
+                    //}
                 }
+
+
+                /*
+                                items(pedidosFiltrados, key = { it.id }) { pedido ->
+                                    if (filtro == PedidoFiltro.ENVIADO) {
+                                        Row {
+                                            Button(onClick = { viewModel.aceptarPedido(pedido.id) }) {
+                                                Text("Aceptar")
+                                            }
+                                            Spacer(Modifier.width(8.dp))
+                                            Button(onClick = { viewModel.rechazarPedido(pedido.id) }) {
+                                                Text("Rechazar")
+                                            }
+                                        }
+                                    }
+                                    Divider()
+                                }
+                                */
             }
         }
 
@@ -97,6 +123,7 @@ fun PedidosAdminScreen(
 @Composable
 fun PedidoItem(
     pedido: PedidoUI,
+    mostrarAcciones: Boolean,
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
 ) {
@@ -143,27 +170,28 @@ fun PedidoItem(
             }
 
 
+            if (mostrarAcciones) {
+                Spacer(Modifier.height(12.dp))
 
-            Spacer(Modifier.height(12.dp))
-
-            // ✅❌ Botones
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedButton(
-                    onClick = onRechazar,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                // ✅❌ Botones
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Rechazar")
-                }
+                    OutlinedButton(
+                        onClick = onRechazar,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Rechazar")
+                    }
 
-                Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(8.dp))
 
-                Button(onClick = onAceptar) {
-                    Text("Aceptar")
+                    Button(onClick = onAceptar) {
+                        Text("Aceptar")
+                    }
                 }
             }
         }
