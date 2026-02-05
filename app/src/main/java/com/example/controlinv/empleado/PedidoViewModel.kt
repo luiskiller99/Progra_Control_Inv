@@ -25,6 +25,7 @@ class PedidoViewModel(
         private set
     var cargando by mutableStateOf(false)
         private set
+    private var inventarioOriginal: List<Inventario> = emptyList()
     init {
         cargarInventario()
     }
@@ -68,10 +69,14 @@ class PedidoViewModel(
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
-            inventario = supabase
+            val lista = supabase
                 .from("inventario")
                 .select()
-                .decodeList()
+                .decodeList<Inventario>()
+
+            inventarioOriginal = lista
+            inventario = lista
+
             cargando = false
         }
     }
@@ -102,6 +107,16 @@ class PedidoViewModel(
                 )
             } else {
                 carrito.removeAt(index)
+            }
+        }
+    }
+    fun filtrarInventario(texto: String) {
+        if (texto.isBlank()) {
+            inventario = inventarioOriginal
+        } else {
+            inventario = inventarioOriginal.filter {
+                it.descripcion?.contains(texto, ignoreCase = true) == true ||
+                        it.clasificacion?.contains(texto, ignoreCase = true) == true
             }
         }
     }

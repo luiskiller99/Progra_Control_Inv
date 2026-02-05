@@ -148,6 +148,7 @@ fun PedidoEmpleadoScreen(
     val pedidoViewModel: PedidoViewModel = viewModel(
         factory = PedidoViewModelFactory(supabase)
     )
+    var textoBusqueda by remember { mutableStateOf("") }
     if (pedidoViewModel.cargando) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
     }
@@ -173,8 +174,22 @@ fun PedidoEmpleadoScreen(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { texto ->
+                    textoBusqueda = texto
+                    pedidoViewModel.filtrarInventario(texto)
+                },
+                label = { Text("Buscar producto") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                }
+            )
 
-                LazyColumn(
+            LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
                     items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
