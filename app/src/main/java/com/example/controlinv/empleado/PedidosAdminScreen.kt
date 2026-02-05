@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 enum class PedidoFiltro {
-    PENDIENTES,
+    ENVIADO,
     ACEPTADOS,
     RECHAZADOS
 }
@@ -29,7 +29,7 @@ fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
 ) {
     val pedidos by viewModel._listaPedidos.collectAsState()
-    var filtro by remember { mutableStateOf(PedidoFiltro.PENDIENTES) }
+    var filtro by remember { mutableStateOf(PedidoFiltro.ENVIADO) }
     if (viewModel.cargando) {
             LinearProgressIndicator(
                 modifier = Modifier
@@ -37,7 +37,6 @@ fun PedidosAdminScreen(
                     .padding(horizontal = 16.dp)
             )
         }
-
         if (pedidos.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -54,7 +53,7 @@ fun PedidosAdminScreen(
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                TextButton(onClick = { filtro = PedidoFiltro.PENDIENTES }) {
+                TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
                     Text("Pendientes")
                 }
                 TextButton(onClick = { filtro = PedidoFiltro.ACEPTADOS }) {
@@ -70,13 +69,13 @@ fun PedidosAdminScreen(
                     .fillMaxSize()
             ) {
                 val pedidosFiltrados = when (filtro) {
-                    PedidoFiltro.PENDIENTES -> pedidos.filter { it.estado == "ENVIADO" }
+                    PedidoFiltro.ENVIADO -> pedidos.filter { it.estado == "ENVIADO" }
                     PedidoFiltro.ACEPTADOS -> pedidos.filter { it.estado == "ACEPTADO" }
                     PedidoFiltro.RECHAZADOS -> pedidos.filter { it.estado == "RECHAZADO" } }
-                items(pedidosFiltrados) { pedido ->
+                items(pedidosFiltrados,key = { it.id }) { pedido ->
 
                 //items(pedidos, key = { it.id }) { pedido ->
-                    if (filtro == PedidoFiltro.PENDIENTES) {
+                    if (filtro == PedidoFiltro.ENVIADO) {
                         Row {
                             Button(onClick = { viewModel.aceptarPedido(pedido.id) }) {
                                 Text("Aceptar")
