@@ -70,7 +70,6 @@ fun PedidosAdminScreen(
                     PedidoFiltro.ACEPTADO-> pedidos.filter { it.estado == "ACEPTADO" }
                     PedidoFiltro.RECHAZADO-> pedidos.filter { it.estado == "RECHAZADO" } }
                 items(pedidosFiltrados, key = { it.id }) { pedido ->
-
                     val pedidoUI = PedidoUI(
                         id = pedido.id,
                         empleadoEmail = pedido.empleadoEmail,
