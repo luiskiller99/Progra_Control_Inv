@@ -12,7 +12,4 @@ val supabase = createSupabaseClient(
 ) {
     install(Auth)
     install(Postgrest)
-
-    install(Auth)
-    install(Postgrest)
 }

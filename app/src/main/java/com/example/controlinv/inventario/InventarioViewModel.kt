@@ -1,4 +1,5 @@
 package com.example.controlinv.inventario
+
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -6,40 +7,23 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.Main.Inventario
-import com.example.controlinv.InventarioLog
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
 class InventarioViewModel : ViewModel() {
-    var hayCambios by mutableStateOf(false)
-        private set
     var cargando by mutableStateOf(false)
         private set
     private var inventarioCompleto = listOf<Inventario>()
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
-    var inventarioLogs by mutableStateOf<List<InventarioLog>>(emptyList())
-        private set
+
     init {
         cargarInventario()
     }
-    fun cargarInventarioLogs() {
-        viewModelScope.launch {
-            try {
-                val logsData = supabase
-                    .from("inventario_logs")
-                    .select()
-                    .decodeList<InventarioLog>()
-                inventarioLogs = logsData
-            } catch (e: Exception) {
-                Log.e("LOGS", "Error cargando inventario_logs", e)
-            }
-        }
-    }
-
 
     private fun cargarInventario() {
         viewModelScope.launch {
@@ -81,7 +65,6 @@ class InventarioViewModel : ViewModel() {
             eliminarInventario(id)
             inventarioCompleto = inventarioCompleto.filter { it.id != id }
             inventario = inventario.filter { it.id != id }
-            hayCambios = false
         }
     }
     fun guardarFila(itemNuevo: Inventario) {

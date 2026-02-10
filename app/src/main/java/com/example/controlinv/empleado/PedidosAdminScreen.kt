@@ -1,9 +1,26 @@
 package com.example.controlinv.empleado
-import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.*
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,18 +31,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,
     RECHAZADO
 }
-@SuppressLint("SuspiciousIndentation")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
 ) {
-    val pedidos by viewModel._listaPedidos.collectAsState()
+    val pedidos by viewModel.listaPedidos.collectAsState()
     var filtro by remember { mutableStateOf(PedidoFiltro.ENVIADO) }
     if (viewModel.cargando) {
             LinearProgressIndicator(
@@ -67,53 +83,25 @@ fun PedidosAdminScreen(
             ) {
                 val pedidosFiltrados = when (filtro) {
                     PedidoFiltro.ENVIADO -> pedidos.filter { it.estado == "ENVIADO" }
-                    PedidoFiltro.ACEPTADO-> pedidos.filter { it.estado == "ACEPTADO" }
-                    PedidoFiltro.RECHAZADO-> pedidos.filter { it.estado == "RECHAZADO" } }
+                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado == "ACEPTADO" }
+                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado == "RECHAZADO" }
+                }
                 items(pedidosFiltrados, key = { it.id }) { pedido ->
-                    val pedidoUI = PedidoUI(
-                        id = pedido.id,
-                        empleadoEmail = pedido.empleadoEmail,
-                                fecha = pedido.fecha,
-                        estado = pedido.estado,
-                        productos = pedido.productos.map { DetallePedido ->
-                            "${DetallePedido.toString()} x${DetallePedido.length}"
+                    PedidoItem(
+                        pedido = pedido,
+                        mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
+                        onAceptar = {
+                            if (pedido.estado == "ENVIADO") {
+                                viewModel.aceptarPedido(pedido.id)
+                            }
+                        },
+                        onRechazar = {
+                            if (pedido.estado == "ENVIADO") {
+                                viewModel.rechazarPedido(pedido.id)
+                            }
                         }
                     )
-                    //if (pedido.estado == "ENVIADO") {
-                        PedidoItem(
-                            pedido = pedidoUI,
-                            mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
-                            onAceptar = {
-                                if (pedido.estado == "ENVIADO") {
-                                    viewModel.aceptarPedido(pedido.id)
-                                }
-                            },
-                            onRechazar = {
-                                if (pedido.estado == "ENVIADO") {
-                                    viewModel.rechazarPedido(pedido.id)
-                                }
-                            }
-                        )
-                    //}
                 }
-
-
-                /*
-                                items(pedidosFiltrados, key = { it.id }) { pedido ->
-                                    if (filtro == PedidoFiltro.ENVIADO) {
-                                        Row {
-                                            Button(onClick = { viewModel.aceptarPedido(pedido.id) }) {
-                                                Text("Aceptar")
-                                            }
-                                            Spacer(Modifier.width(8.dp))
-                                            Button(onClick = { viewModel.rechazarPedido(pedido.id) }) {
-                                                Text("Rechazar")
-                                            }
-                                        }
-                                    }
-                                    Divider()
-                                }
-                                */
             }
         }
 

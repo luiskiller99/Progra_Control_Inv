@@ -1,20 +1,20 @@
 package com.example.controlinv.empleado
+
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.jan.supabase.postgrest.from
-import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlin.collections.mapOf
-import android.util.Log
 import com.example.controlinv.Main.Inventario
 import com.example.controlinv.auth.supabase
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class PedidoUI(
@@ -23,15 +23,6 @@ data class PedidoUI(
     val fecha: String,
     val estado: String,
     val productos: List<String>
-)
-@kotlinx.serialization.Serializable
-data class InventarioLog(
-    val id: String,
-    val producto_id: String,
-    val admin_email: String,
-    val item_anterior: Inventario,
-    val item_nuevo: Inventario,
-    val fecha: String
 )
 
 @Serializable
@@ -44,7 +35,7 @@ data class Pedido(
 )
 
 class PedidoAdminViewModel : ViewModel() {
-    val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
+    private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
 
     var cargando by mutableStateOf(false)
@@ -125,24 +116,6 @@ class PedidoAdminViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error rechazando pedido", e)
-            }
-        }
-    }
-    private fun actualizarEstado(pedidoId: String, nuevoEstado: String) {
-        viewModelScope.launch {
-            try {
-                supabase
-                    .from("pedidos")
-                    .update(
-                        mapOf("estado" to nuevoEstado)
-                    ) {
-                        filter { eq("id", pedidoId) }
-                    }
-
-                cargarPedidos()
-
-            } catch (e: Exception) {
-                Log.e("ADMIN_PEDIDOS", "Error actualizando pedido", e)
             }
         }
     }
