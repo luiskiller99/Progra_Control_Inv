@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -716,68 +715,57 @@ fun CarritoResumen(
     onEliminar: (String) -> Unit,
     onConfirmar: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Text(
-                "Carrito (${carrito.size})",
-                style = MaterialTheme.typography.titleMedium
-            )
 
-            Spacer(Modifier.height(8.dp))
+        Text(
+            "Carrito (${carrito.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
 
-            LazyColumn(
+        Spacer(Modifier.height(8.dp))
+
+        carrito.forEach { item ->
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 220.dp)
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(carrito, key = { it.producto.id ?: it.producto.codigo ?: "sin-id" }) { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "${item.producto.descripcion}",
-                            modifier = Modifier.weight(1f)
-                        )
 
-                        val productId = item.producto.id ?: return@items
+                Text(
+                    "${item.producto.descripcion}",
+                    modifier = Modifier.weight(1f)
+                )
 
-                        IconButton(onClick = { onRestar(productId) }) {
-                            Text("➖")
-                        }
+                IconButton(onClick = { onRestar(item.producto.id!!) }) {
+                    Text("➖")
+                }
 
-                        Text("${item.cantidad}")
+                Text("${item.cantidad}")
 
-                        IconButton(onClick = { onSumar(productId) }) {
-                            Text("➕")
-                        }
+                IconButton(onClick = { onSumar(item.producto.id!!) }) {
+                    Text("➕")
+                }
 
-                        IconButton(onClick = { onEliminar(productId) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                        }
-                    }
+                IconButton(onClick = { onEliminar(item.producto.id!!) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                 }
             }
+        }
 
-            Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
-            Button(
-                onClick = onConfirmar,
-                enabled = carrito.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Confirmar pedido")
-            }
+        Button(
+            onClick = onConfirmar,
+            enabled = carrito.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Confirmar pedido")
         }
     }
 }
+
