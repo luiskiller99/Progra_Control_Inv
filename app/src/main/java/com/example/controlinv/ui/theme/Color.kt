@@ -30,3 +30,8 @@ val SurfaceCardDark = Color(0xFF1E293B)
 
 // 🔴 Errores
 val ErrorRed = Color(0xFFDC2626)
+
+val SurfaceDark = Color(0xFF111827)
+val BackgroundDark = Color(0xFF0B1220)
+val SurfaceLight = Color(0xFFFFFFFF)
+val BackgroundLight = Color(0xFFF8FAFC)
