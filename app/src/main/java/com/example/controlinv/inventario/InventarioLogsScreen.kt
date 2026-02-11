@@ -1,4 +1,4 @@
-package com.example.controlinv
+package com.example.controlinv.inventario
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.example.controlinv.auth.supabase
-import com.example.controlinv.inventario.InventarioLogRaw
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject

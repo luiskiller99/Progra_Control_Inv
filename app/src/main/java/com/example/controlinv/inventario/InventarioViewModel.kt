@@ -6,13 +6,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.Main.Inventario
+import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_KEY
+import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
 
 class InventarioViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
@@ -53,9 +58,14 @@ class InventarioViewModel : ViewModel() {
                 .map { it.copy() }
         }
     }
-    fun agregar(item: Inventario) {
+    fun agregar(item: Inventario, imagenBytes: ByteArray? = null, extension: String = "jpg") {
         viewModelScope.launch {
-            val creado = insertarInventario(item)
+            val urlImagen = if (imagenBytes != null) {
+                subirImagenProducto(imagenBytes, extension)
+            } else {
+                null
+            }
+            val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
             inventarioCompleto = inventarioCompleto + creado
             inventario = inventarioCompleto.map { it.copy() }
         }
@@ -106,6 +116,42 @@ class InventarioViewModel : ViewModel() {
         val original = inventarioCompleto.find { it.id == id } ?: return
         inventario = inventario.map {
             if (it.id == id) original.copy() else it
+        }
+    }
+
+    private suspend fun subirImagenProducto(imagenBytes: ByteArray, extension: String): String? {
+        return try {
+            val bucket = "productos"
+            val filePath = "inventario/${UUID.randomUUID()}.$extension"
+            val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
+
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("apikey", SUPABASE_KEY)
+                val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer ${accessToken ?: SUPABASE_KEY}"
+                )
+                setRequestProperty("Content-Type", "image/$extension")
+                setRequestProperty("x-upsert", "true")
+            }
+
+            connection.outputStream.use { output ->
+                output.write(imagenBytes)
+            }
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
+            } else {
+                Log.e("INVENTARIO", "Error subiendo imagen a Supabase. Código: $code")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("INVENTARIO", "Error subiendo imagen", e)
+            null
         }
     }
 }
