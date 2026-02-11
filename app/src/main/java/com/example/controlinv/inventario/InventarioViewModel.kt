@@ -6,12 +6,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
+import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -68,16 +70,14 @@ class InventarioViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val urlImagen = if (imagenBytes != null) {
-                    val uploadResult = subirImagenProducto(imagenBytes, extension)
-                    if (uploadResult.isFailure) {
-                        val detalle = uploadResult.exceptionOrNull()?.message
-                            ?: "Error desconocido"
-                        onError("No se pudo subir la imagen: $detalle")
-                        return@launch
-                    }
-                    uploadResult.getOrNull()
+                    subirImagenProducto(imagenBytes, extension)
                 } else {
                     null
+                }
+
+                if (imagenBytes != null && urlImagen == null) {
+                    onError("No se pudo subir la imagen a Supabase. Intenta de nuevo.")
+                    return@launch
                 }
 
                 val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
@@ -87,6 +87,7 @@ class InventarioViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("INVENTARIO", "Error agregando inventario", e)
                 onError("No se pudo guardar el producto: ${e.message}")
+                onError("No se pudo guardar el producto.")
             }
         }
     }
