@@ -154,6 +154,11 @@ class InventarioViewModel : ViewModel() {
                 doOutput = true
                 setRequestProperty("apikey", SUPABASE_KEY)
                 setRequestProperty("Authorization", "Bearer $accessToken")
+                val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer ${accessToken ?: SUPABASE_KEY}"
+                )
                 setRequestProperty("Content-Type", "image/$extension")
                 setRequestProperty("x-upsert", "true")
             }
@@ -173,6 +178,7 @@ class InventarioViewModel : ViewModel() {
                     "INVENTARIO",
                     "Error subiendo imagen a Supabase. Código: $code. Detalle: $errorBody"
                 )
+                Log.e("INVENTARIO", "Error subiendo imagen a Supabase. Código: $code")
                 null
             }
         } catch (e: Exception) {
