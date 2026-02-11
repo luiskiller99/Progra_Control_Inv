@@ -9,6 +9,7 @@ data class Inventario(
     val descripcion: String?,
     val cantidad: Int?,
     val clasificacion: String?,
+    val imagen: String? = null,
     val extra1: String? = null,
     val extra2: String? = null
 )

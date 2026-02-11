@@ -417,6 +417,7 @@ fun NuevoInventarioDialog(
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var clasificacion by remember { mutableStateOf("") }
+    var imagenUrl by remember { mutableStateOf("") }
 
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
@@ -434,7 +435,8 @@ fun NuevoInventarioDialog(
                             codigo = codigo.trim(),
                             descripcion = descripcion.trim(),
                             cantidad = cantidad.toInt(),
-                            clasificacion = clasificacion.trim()
+                            clasificacion = clasificacion.trim(),
+                            imagen = imagenUrl.trim().ifBlank { null }
                         )
                     )
                 },
@@ -478,6 +480,13 @@ fun NuevoInventarioDialog(
                     value = clasificacion,
                     onValueChange = { clasificacion = it },
                     label = { Text("Clasificación") },
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = imagenUrl,
+                    onValueChange = { imagenUrl = it },
+                    label = { Text("URL de imagen") },
                     singleLine = true
                 )
             }
@@ -610,7 +619,7 @@ fun ProductoCard(
 
             // 🖼️ IMAGEN
             AsyncImage(
-                model = item.extra1 ?: R.drawable.placeholder_producto,
+                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
                     .size(80.dp)
