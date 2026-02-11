@@ -1,9 +1,11 @@
-package com.example.controlinv.Main
+package com.example.controlinv.main
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,15 +52,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.controlinv.InventarioLogsScreen
+import com.example.controlinv.inventario.InventarioLogsScreen
 import com.example.controlinv.R
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
@@ -69,25 +73,15 @@ import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
 import com.example.controlinv.ui.theme.ControlInvTheme
 import com.example.controlinv.inventario.InventarioViewModel
+import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.inventario.logout
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.serialization.Serializable
 
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
-@Serializable
-data class Inventario(
-    val id: String? = null,
-    val codigo: String? ,
-    val descripcion: String? ,
-    val cantidad: Int? ,
-    val clasificacion: String? ,
-    val extra1: String? = null,
-    val extra2: String? = null
-)
 enum class AdminTab  {
     INVENTARIO,
     PEDIDOS,
@@ -311,6 +305,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
@@ -364,9 +359,14 @@ fun InventarioScreen(
 
     if (creando) {
         NuevoInventarioDialog(
-            onSave = {
-                viewModel.agregar(it)
-                creando = false
+            onSave = { item, imagenBytes, extension ->
+                viewModel.agregar(
+                    item = item,
+                    imagenBytes = imagenBytes,
+                    extension = extension,
+                    onOk = { creando = false },
+                    onError = { mensaje -> Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show() }
+                )
             },
             onDismiss = { creando = false }
         )
@@ -420,17 +420,25 @@ fun BuscadorInventario(viewModel: InventarioViewModel) {
 }
 @Composable
 fun NuevoInventarioDialog(
-    onSave: (Inventario) -> Unit,
+    onSave: (Inventario, ByteArray?, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var clasificacion by remember { mutableStateOf("") }
+    var imagenSeleccionada by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    val launcherImagen = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        imagenSeleccionada = uri
+    }
 
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
-            cantidad.toIntOrNull() != null
+            cantidad.toIntOrNull() != null &&
+            imagenSeleccionada != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -445,7 +453,11 @@ fun NuevoInventarioDialog(
                             descripcion = descripcion.trim(),
                             cantidad = cantidad.toInt(),
                             clasificacion = clasificacion.trim()
-                        )
+                        ),
+                        imagenSeleccionada?.let { uri ->
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        },
+                        obtenerExtensionImagen(imagenSeleccionada?.let { context.contentResolver.getType(it) })
                     )
                 },
                 enabled = valido
@@ -490,10 +502,34 @@ fun NuevoInventarioDialog(
                     label = { Text("Clasificación") },
                     singleLine = true
                 )
+
+                Button(onClick = { launcherImagen.launch("image/*") }) {
+                    Text(if (imagenSeleccionada == null) "Seleccionar imagen" else "Cambiar imagen")
+                }
+
+                if (imagenSeleccionada != null) {
+                    Text("Imagen seleccionada")
+                    AsyncImage(
+                        model = imagenSeleccionada,
+                        contentDescription = "Vista previa",
+                        modifier = Modifier.size(100.dp)
+                    )
+                } else {
+                    Text("Debes seleccionar una imagen para guardar el producto")
+                }
             }
         }
     )
 }
+
+private fun obtenerExtensionImagen(mimeType: String?): String {
+    return when (mimeType?.lowercase()) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        else -> "jpg"
+    }
+}
+
 @Composable
 fun InventarioHeader() {
     Row(
@@ -620,7 +656,7 @@ fun ProductoCard(
 
             // 🖼️ IMAGEN
             AsyncImage(
-                model = item.extra1 ?: R.drawable.placeholder_producto,
+                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
                     .size(80.dp)

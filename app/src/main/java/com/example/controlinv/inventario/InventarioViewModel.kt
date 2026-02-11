@@ -6,13 +6,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.Main.Inventario
+import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_KEY
+import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
 
 class InventarioViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
@@ -53,11 +58,36 @@ class InventarioViewModel : ViewModel() {
                 .map { it.copy() }
         }
     }
-    fun agregar(item: Inventario) {
+    fun agregar(
+        item: Inventario,
+        imagenBytes: ByteArray? = null,
+        extension: String = "jpg",
+        onOk: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            val creado = insertarInventario(item)
-            inventarioCompleto = inventarioCompleto + creado
-            inventario = inventarioCompleto.map { it.copy() }
+            try {
+                val urlImagen = if (imagenBytes != null) {
+                    val uploadResult = subirImagenProducto(imagenBytes, extension)
+                    if (uploadResult.isFailure) {
+                        val detalle = uploadResult.exceptionOrNull()?.message
+                            ?: "Error desconocido"
+                        onError("No se pudo subir la imagen: $detalle")
+                        return@launch
+                    }
+                    uploadResult.getOrNull()
+                } else {
+                    null
+                }
+
+                val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
+                inventarioCompleto = inventarioCompleto + creado
+                inventario = inventarioCompleto.map { it.copy() }
+                onOk()
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error agregando inventario", e)
+                onError("No se pudo guardar el producto: ${e.message}")
+            }
         }
     }
     fun eliminar(id: String) {
@@ -108,6 +138,49 @@ class InventarioViewModel : ViewModel() {
             if (it.id == id) original.copy() else it
         }
     }
+
+    private suspend fun subirImagenProducto(
+        imagenBytes: ByteArray,
+        extension: String
+    ): Result<String> {
+        return try {
+            val bucket = "productos"
+            val extensionNormalizada = when (extension.lowercase()) {
+                "jpeg" -> "jpg"
+                else -> extension.lowercase()
+            }
+            val filePath = "inventario/${UUID.randomUUID()}.$extensionNormalizada"
+            val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
+
+            val token = supabase.auth.currentSessionOrNull()?.accessToken
+            val authToken = token ?: SUPABASE_KEY
+
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("apikey", SUPABASE_KEY)
+                setRequestProperty("Authorization", "Bearer $authToken")
+                setRequestProperty("Content-Type", "image/$extensionNormalizada")
+                setRequestProperty("x-upsert", "true")
+            }
+
+            connection.outputStream.use { it.write(imagenBytes) }
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                Result.success("$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath")
+            } else {
+                val errorBody = runCatching {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+                Result.failure(Exception("HTTP $code ${errorBody ?: "sin detalle"}"))
+            }
+        } catch (e: Exception) {
+            Log.e("INVENTARIO", "Error subiendo imagen", e)
+            Result.failure(e)
+        }
+    }
+
 }
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
