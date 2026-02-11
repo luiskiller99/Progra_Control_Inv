@@ -1,9 +1,11 @@
 package com.example.controlinv.main
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,8 +52,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -354,8 +358,8 @@ fun InventarioScreen(
 
     if (creando) {
         NuevoInventarioDialog(
-            onSave = {
-                viewModel.agregar(it)
+            onSave = { item, imagenBytes, extension ->
+                viewModel.agregar(item, imagenBytes, extension)
                 creando = false
             },
             onDismiss = { creando = false }
@@ -410,14 +414,20 @@ fun BuscadorInventario(viewModel: InventarioViewModel) {
 }
 @Composable
 fun NuevoInventarioDialog(
-    onSave: (Inventario) -> Unit,
+    onSave: (Inventario, ByteArray?, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var clasificacion by remember { mutableStateOf("") }
-    var imagenUrl by remember { mutableStateOf("") }
+    var imagenSeleccionada by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    val launcherImagen = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        imagenSeleccionada = uri
+    }
 
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
@@ -435,9 +445,12 @@ fun NuevoInventarioDialog(
                             codigo = codigo.trim(),
                             descripcion = descripcion.trim(),
                             cantidad = cantidad.toInt(),
-                            clasificacion = clasificacion.trim(),
-                            imagen = imagenUrl.trim().ifBlank { null }
-                        )
+                            clasificacion = clasificacion.trim()
+                        ),
+                        imagenSeleccionada?.let { uri ->
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        },
+                        obtenerExtensionImagen(imagenSeleccionada?.let { context.contentResolver.getType(it) })
                     )
                 },
                 enabled = valido
@@ -483,16 +496,31 @@ fun NuevoInventarioDialog(
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = imagenUrl,
-                    onValueChange = { imagenUrl = it },
-                    label = { Text("URL de imagen") },
-                    singleLine = true
-                )
+                Button(onClick = { launcherImagen.launch("image/*") }) {
+                    Text(if (imagenSeleccionada == null) "Seleccionar imagen" else "Cambiar imagen")
+                }
+
+                if (imagenSeleccionada != null) {
+                    Text("Imagen seleccionada")
+                    AsyncImage(
+                        model = imagenSeleccionada,
+                        contentDescription = "Vista previa",
+                        modifier = Modifier.size(100.dp)
+                    )
+                }
             }
         }
     )
 }
+
+private fun obtenerExtensionImagen(mimeType: String?): String {
+    return when (mimeType?.lowercase()) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        else -> "jpg"
+    }
+}
+
 @Composable
 fun InventarioHeader() {
     Row(
