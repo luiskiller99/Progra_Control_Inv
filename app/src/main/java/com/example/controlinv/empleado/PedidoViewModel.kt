@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 
 data class ItemCarrito(
     val producto: Inventario,
-    var cantidad: Int
+    var cantidad: Int,
 )
 class PedidoViewModel(
     private val supabase: SupabaseClient
@@ -46,7 +46,7 @@ class PedidoViewModel(
                         JsonObject(
                             mapOf(
                                 "producto_id" to JsonPrimitive(it.producto.id!!),
-                                "cantidad" to JsonPrimitive(it.cantidad)
+                                "cantidad" to JsonPrimitive(it.cantidad),
                             )
                         )
                     }

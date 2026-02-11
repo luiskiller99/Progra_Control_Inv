@@ -37,7 +37,6 @@ data class Pedido(
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
-
     var cargando by mutableStateOf(false)
         private set
     init {
@@ -70,9 +69,10 @@ class PedidoAdminViewModel : ViewModel() {
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
-                            val nombre = inventario[det.producto_id]?.descripcion
-                                ?: "Producto"
-                            "${det.cantidad} x $nombre"
+                            val producto = inventario[det.producto_id]
+                            val codigo = producto?.codigo ?: "N/A"
+                            val nombre = producto?.descripcion ?: "Producto"
+                            "${det.cantidad} x [$codigo] $nombre"
                         }
 
                     PedidoUI(

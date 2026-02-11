@@ -148,10 +148,12 @@ fun PedidoItem(
 
             // 📦 Detalle
             Text("Productos:", style = MaterialTheme.typography.labelMedium)
+            //Text("* ${pedido.productos} *", style = MaterialTheme.typography.labelMedium)
+
 
             pedido.productos.forEach { productoTexto ->
                 Text(
-                    text = "• $productoTexto",
+                    text = "• $productoTexto • ",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
