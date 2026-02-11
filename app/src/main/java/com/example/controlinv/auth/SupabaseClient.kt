@@ -14,5 +14,4 @@ val supabase = createSupabaseClient(
 ) {
     install(Auth)
     install(Postgrest)
-    install(Storage)
 }

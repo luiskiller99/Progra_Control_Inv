@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
@@ -16,6 +17,8 @@ import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 
 class InventarioViewModel : ViewModel() {
@@ -140,6 +143,7 @@ class InventarioViewModel : ViewModel() {
         return try {
             val bucket = "productos"
             val filePath = "inventario/${UUID.randomUUID()}.$extension"
+            val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
 
             val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
             if (accessToken == null) {
@@ -147,15 +151,38 @@ class InventarioViewModel : ViewModel() {
                 return null
             }
 
-            supabase.storage
-                .from(bucket)
-                .upload(
-                    path = filePath,
-                    data = imagenBytes,
-                    upsert = true
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("apikey", SUPABASE_KEY)
+                setRequestProperty("Authorization", "Bearer $accessToken")
+                val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer ${accessToken ?: SUPABASE_KEY}"
                 )
+                setRequestProperty("Content-Type", "image/$extension")
+                setRequestProperty("x-upsert", "true")
+            }
 
-            "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
+            connection.outputStream.use { output ->
+                output.write(imagenBytes)
+            }
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
+            } else {
+                val errorBody = runCatching {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+                Log.e(
+                    "INVENTARIO",
+                    "Error subiendo imagen a Supabase. Código: $code. Detalle: $errorBody"
+                )
+                Log.e("INVENTARIO", "Error subiendo imagen a Supabase. Código: $code")
+                null
+            }
         } catch (e: Exception) {
             Log.e("INVENTARIO", "Error subiendo imagen", e)
             null
