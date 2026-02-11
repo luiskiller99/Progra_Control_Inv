@@ -51,6 +51,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:supabase-kt:2.4.1")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.4.1")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:2.4.1")
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.4.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("io.ktor:ktor-client-android:2.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
