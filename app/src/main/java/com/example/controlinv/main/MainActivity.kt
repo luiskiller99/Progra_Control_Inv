@@ -367,6 +367,8 @@ fun InventarioScreen(
                     onOk = { creando = false },
                     onError = { mensaje -> Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show() }
                 )
+                viewModel.agregar(item, imagenBytes, extension)
+                creando = false
             },
             onDismiss = { creando = false }
         )
@@ -439,6 +441,7 @@ fun NuevoInventarioDialog(
             descripcion.isNotBlank() &&
             cantidad.toIntOrNull() != null &&
             imagenSeleccionada != null
+            cantidad.toIntOrNull() != null
 
     AlertDialog(
         onDismissRequest = onDismiss,

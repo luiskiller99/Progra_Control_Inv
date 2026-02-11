@@ -6,9 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
+import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
@@ -16,6 +17,8 @@ import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 
 class InventarioViewModel : ViewModel() {
@@ -67,16 +70,14 @@ class InventarioViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val urlImagen = if (imagenBytes != null) {
-                    val uploadResult = subirImagenProducto(imagenBytes, extension)
-                    if (uploadResult.isFailure) {
-                        val detalle = uploadResult.exceptionOrNull()?.message
-                            ?: "Error desconocido"
-                        onError("No se pudo subir la imagen: $detalle")
-                        return@launch
-                    }
-                    uploadResult.getOrNull()
+                    subirImagenProducto(imagenBytes, extension)
                 } else {
                     null
+                }
+
+                if (imagenBytes != null && urlImagen == null) {
+                    onError("No se pudo subir la imagen a Supabase. Intenta de nuevo.")
+                    return@launch
                 }
 
                 val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
@@ -85,7 +86,7 @@ class InventarioViewModel : ViewModel() {
                 onOk()
             } catch (e: Exception) {
                 Log.e("INVENTARIO", "Error agregando inventario", e)
-                onError("No se pudo guardar el producto: ${e.message}")
+                onError("No se pudo guardar el producto.")
             }
         }
     }
@@ -138,33 +139,55 @@ class InventarioViewModel : ViewModel() {
         }
     }
 
-    private suspend fun subirImagenProducto(
-        imagenBytes: ByteArray,
-        extension: String
-    ): Result<String> {
+    private suspend fun subirImagenProducto(imagenBytes: ByteArray, extension: String): String? {
         return try {
             val bucket = "productos"
-            val extensionNormalizada = when (extension.lowercase()) {
-                "jpeg" -> "jpg"
-                else -> extension.lowercase()
+            val filePath = "inventario/${UUID.randomUUID()}.$extension"
+            val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
+
+            val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+            if (accessToken == null) {
+                Log.e("INVENTARIO", "No hay sesión activa para subir imagen")
+                return null
             }
-            val filePath = "inventario/${UUID.randomUUID()}.$extensionNormalizada"
 
-            supabase.storage
-                .from(bucket)
-                .upload(
-                    path = filePath,
-                    data = imagenBytes,
-                    upsert = true
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("apikey", SUPABASE_KEY)
+                setRequestProperty("Authorization", "Bearer $accessToken")
+                val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer ${accessToken ?: SUPABASE_KEY}"
                 )
+                setRequestProperty("Content-Type", "image/$extension")
+                setRequestProperty("x-upsert", "true")
+            }
 
-            Result.success("$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath")
+            connection.outputStream.use { output ->
+                output.write(imagenBytes)
+            }
+
+            val code = connection.responseCode
+            if (code in 200..299) {
+                "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
+            } else {
+                val errorBody = runCatching {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+                Log.e(
+                    "INVENTARIO",
+                    "Error subiendo imagen a Supabase. Código: $code. Detalle: $errorBody"
+                )
+                Log.e("INVENTARIO", "Error subiendo imagen a Supabase. Código: $code")
+                null
+            }
         } catch (e: Exception) {
             Log.e("INVENTARIO", "Error subiendo imagen", e)
-            Result.failure(e)
+            null
         }
     }
-
 }
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
