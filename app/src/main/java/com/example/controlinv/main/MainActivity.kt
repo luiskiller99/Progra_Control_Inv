@@ -1,4 +1,4 @@
-package com.example.controlinv.Main
+package com.example.controlinv.main
 
 import android.os.Bundle
 import android.widget.Toast
@@ -58,7 +58,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.controlinv.InventarioLogsScreen
+import com.example.controlinv.inventario.InventarioLogsScreen
 import com.example.controlinv.R
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
@@ -69,25 +69,15 @@ import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
 import com.example.controlinv.ui.theme.ControlInvTheme
 import com.example.controlinv.inventario.InventarioViewModel
+import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.inventario.logout
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.serialization.Serializable
 
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
-@Serializable
-data class Inventario(
-    val id: String? = null,
-    val codigo: String? ,
-    val descripcion: String? ,
-    val cantidad: Int? ,
-    val clasificacion: String? ,
-    val extra1: String? = null,
-    val extra2: String? = null
-)
 enum class AdminTab  {
     INVENTARIO,
     PEDIDOS,
