@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.Main.Inventario
+import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest

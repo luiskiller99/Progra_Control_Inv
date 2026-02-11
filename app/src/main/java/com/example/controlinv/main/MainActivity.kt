@@ -1,9 +1,11 @@
-package com.example.controlinv.Main
+package com.example.controlinv.main
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,7 +32,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -43,51 +44,38 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import com.example.controlinv.InventarioLogsScreen
+import com.example.controlinv.inventario.InventarioLogsScreen
+import com.example.controlinv.main.screens.PedidoEmpleadoScreen
 import com.example.controlinv.R
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
 import com.example.controlinv.auth.supabase
-import com.example.controlinv.empleado.ItemCarrito
-import com.example.controlinv.empleado.PedidoViewModel
-import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
 import com.example.controlinv.ui.theme.ControlInvTheme
 import com.example.controlinv.inventario.InventarioViewModel
+import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.inventario.logout
-import io.github.jan.supabase.gotrue.auth
-import kotlinx.serialization.Serializable
 
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
-@Serializable
-data class Inventario(
-    val id: String? = null,
-    val codigo: String? ,
-    val descripcion: String? ,
-    val cantidad: Int? ,
-    val clasificacion: String? ,
-    val extra1: String? = null,
-    val extra2: String? = null
-)
 enum class AdminTab  {
     INVENTARIO,
     PEDIDOS,
@@ -170,103 +158,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PedidoEmpleadoScreen(
-    onLogout: () -> Unit
-) {
-    val pedidoViewModel: PedidoViewModel = viewModel(
-        factory = PedidoViewModelFactory(supabase)
-    )
-    var textoBusqueda by remember { mutableStateOf("") }
-    if (pedidoViewModel.cargando) {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-    }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Inventario") },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-                Text(
-                    "Catálogo de productos",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-            OutlinedTextField(
-                value = textoBusqueda,
-                onValueChange = { texto ->
-                    textoBusqueda = texto
-                    pedidoViewModel.filtrarInventario(texto)
-                },
-                label = { Text("Buscar producto") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                }
-            )
-
-            LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
-                        ProductoCard(
-                            item = item,
-                            onAgregar = { cant ->
-                                pedidoViewModel.agregarAlCarrito(item, cant)
-                            }
-                        )
-                    }
-                }
-
-                Divider()
-
-                val userId = supabase.auth.currentUserOrNull()?.id
-                CarritoResumen(
-                carrito = pedidoViewModel.carrito,
-                onSumar = { id ->
-                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                    if (item != null) {
-                        pedidoViewModel.agregarAlCarrito(item.producto, 1)
-                    }
-                },
-                onRestar = { id ->
-                    pedidoViewModel.restarDelCarrito(id)
-                },
-                onEliminar = { id ->
-                    pedidoViewModel.quitarDelCarrito(id)
-                },
-                onConfirmar = {
-                    if (userId == null) return@CarritoResumen
-                    val emailUsuario =
-                        supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-
-                    pedidoViewModel.confirmarPedido(
-                        userId = userId,
-                        email = emailUsuario,
-                        onOk = {},
-                        onError = {}
-                    )
-                }
-            )
-
-
-        }
-        }
-}
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
 
@@ -311,6 +202,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
@@ -364,9 +256,14 @@ fun InventarioScreen(
 
     if (creando) {
         NuevoInventarioDialog(
-            onSave = {
-                viewModel.agregar(it)
-                creando = false
+            onSave = { item, imagenBytes, extension ->
+                viewModel.agregar(
+                    item = item,
+                    imagenBytes = imagenBytes,
+                    extension = extension,
+                    onOk = { creando = false },
+                    onError = { mensaje -> Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show() }
+                )
             },
             onDismiss = { creando = false }
         )
@@ -420,17 +317,25 @@ fun BuscadorInventario(viewModel: InventarioViewModel) {
 }
 @Composable
 fun NuevoInventarioDialog(
-    onSave: (Inventario) -> Unit,
+    onSave: (Inventario, ByteArray?, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var clasificacion by remember { mutableStateOf("") }
+    var imagenSeleccionada by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+    val launcherImagen = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        imagenSeleccionada = uri
+    }
 
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
-            cantidad.toIntOrNull() != null
+            cantidad.toIntOrNull() != null &&
+            imagenSeleccionada != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -445,7 +350,11 @@ fun NuevoInventarioDialog(
                             descripcion = descripcion.trim(),
                             cantidad = cantidad.toInt(),
                             clasificacion = clasificacion.trim()
-                        )
+                        ),
+                        imagenSeleccionada?.let { uri ->
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        },
+                        obtenerExtensionImagen(imagenSeleccionada?.let { context.contentResolver.getType(it) })
                     )
                 },
                 enabled = valido
@@ -490,10 +399,34 @@ fun NuevoInventarioDialog(
                     label = { Text("Clasificación") },
                     singleLine = true
                 )
+
+                Button(onClick = { launcherImagen.launch("image/*") }) {
+                    Text(if (imagenSeleccionada == null) "Seleccionar imagen" else "Cambiar imagen")
+                }
+
+                if (imagenSeleccionada != null) {
+                    Text("Imagen seleccionada")
+                    AsyncImage(
+                        model = imagenSeleccionada,
+                        contentDescription = "Vista previa",
+                        modifier = Modifier.size(100.dp)
+                    )
+                } else {
+                    Text("Debes seleccionar una imagen para guardar el producto")
+                }
             }
         }
     )
 }
+
+private fun obtenerExtensionImagen(mimeType: String?): String {
+    return when (mimeType?.lowercase()) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        else -> "jpg"
+    }
+}
+
 @Composable
 fun InventarioHeader() {
     Row(
@@ -602,134 +535,3 @@ fun CampoTabla(
         )
     }
 }
-@Composable
-fun ProductoCard(
-    item: Inventario,
-    onAgregar: (Int) -> Unit
-) {
-    var cantidad by remember { mutableStateOf("1") }
-
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp)
-        ) {
-
-            // 🖼️ IMAGEN
-            AsyncImage(
-                model = item.extra1 ?: R.drawable.placeholder_producto,
-                contentDescription = item.descripcion,
-                modifier = Modifier
-                    .size(80.dp)
-                    .padding(end = 12.dp)
-            )
-
-            // 📦 INFO PRODUCTO
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    item.codigo ?: "",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Text(
-                    item.descripcion ?: "",
-                    maxLines = 2
-                )
-
-                Text("Stock: ${item.cantidad ?: 0}")
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-
-                    OutlinedTextField(
-                        value = cantidad,
-                        onValueChange = { cantidad = it },
-                        modifier = Modifier.width(80.dp),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        singleLine = true
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Button(onClick = {
-                        onAgregar(cantidad.toIntOrNull() ?: 0)
-                    }) {
-                        Text("Agregar")
-                    }
-                }
-            }
-        }
-    }
-}
-@Composable
-fun CarritoResumen(
-    carrito: List<ItemCarrito>,
-    onSumar: (String) -> Unit,
-    onRestar: (String) -> Unit,
-    onEliminar: (String) -> Unit,
-    onConfirmar: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp)
-    ) {
-
-        Text(
-            "Carrito (${carrito.size})",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        carrito.forEach { item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Text(
-                    "${item.producto.descripcion}",
-                    modifier = Modifier.weight(1f)
-                )
-
-                IconButton(onClick = { onRestar(item.producto.id!!) }) {
-                    Text("➖")
-                }
-
-                Text("${item.cantidad}")
-
-                IconButton(onClick = { onSumar(item.producto.id!!) }) {
-                    Text("➕")
-                }
-
-                IconButton(onClick = { onEliminar(item.producto.id!!) }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = onConfirmar,
-            enabled = carrito.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Confirmar pedido")
-        }
-    }
-}
-
