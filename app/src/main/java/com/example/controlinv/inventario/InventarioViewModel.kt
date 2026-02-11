@@ -10,8 +10,11 @@ import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
+import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -181,7 +184,7 @@ class InventarioViewModel : ViewModel() {
                 null
             }
         } catch (e: Exception) {
-            ultimoErrorSubida = "${e::class.java.simpleName}: ${e.message ?: "sin detalle"}"
+            ultimoErrorSubida = e.message ?: "Excepción sin detalle"
             Log.e("INVENTARIO_UPLOAD", "Error subiendo imagen", e)
             null
         }

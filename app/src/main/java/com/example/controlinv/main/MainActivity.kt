@@ -44,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,17 +60,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.controlinv.inventario.InventarioLogsScreen
-import com.example.controlinv.main.screens.PedidoEmpleadoScreen
 import com.example.controlinv.R
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
 import com.example.controlinv.auth.supabase
+import com.example.controlinv.empleado.ItemCarrito
+import com.example.controlinv.empleado.PedidoViewModel
+import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
 import com.example.controlinv.ui.theme.ControlInvTheme
 import com.example.controlinv.inventario.InventarioViewModel
 import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.inventario.logout
+import io.github.jan.supabase.gotrue.auth
 
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
@@ -157,6 +162,103 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PedidoEmpleadoScreen(
+    onLogout: () -> Unit
+) {
+    val pedidoViewModel: PedidoViewModel = viewModel(
+        factory = PedidoViewModelFactory(supabase)
+    )
+    var textoBusqueda by remember { mutableStateOf("") }
+    if (pedidoViewModel.cargando) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Inventario") },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+                Text(
+                    "Catálogo de productos",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { texto ->
+                    textoBusqueda = texto
+                    pedidoViewModel.filtrarInventario(texto)
+                },
+                label = { Text("Buscar producto") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                }
+            )
+
+            LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
+                        ProductoCard(
+                            item = item,
+                            onAgregar = { cant ->
+                                pedidoViewModel.agregarAlCarrito(item, cant)
+                            }
+                        )
+                    }
+                }
+
+                Divider()
+
+                val userId = supabase.auth.currentUserOrNull()?.id
+                CarritoResumen(
+                carrito = pedidoViewModel.carrito,
+                onSumar = { id ->
+                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
+                    if (item != null) {
+                        pedidoViewModel.agregarAlCarrito(item.producto, 1)
+                    }
+                },
+                onRestar = { id ->
+                    pedidoViewModel.restarDelCarrito(id)
+                },
+                onEliminar = { id ->
+                    pedidoViewModel.quitarDelCarrito(id)
+                },
+                onConfirmar = {
+                    if (userId == null) return@CarritoResumen
+                    val emailUsuario =
+                        supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+
+                    pedidoViewModel.confirmarPedido(
+                        userId = userId,
+                        email = emailUsuario,
+                        onOk = {},
+                        onError = {}
+                    )
+                }
+            )
+
+
+        }
+        }
 }
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
@@ -535,3 +637,134 @@ fun CampoTabla(
         )
     }
 }
+@Composable
+fun ProductoCard(
+    item: Inventario,
+    onAgregar: (Int) -> Unit
+) {
+    var cantidad by remember { mutableStateOf("1") }
+
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp)
+        ) {
+
+            // 🖼️ IMAGEN
+            AsyncImage(
+                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
+                contentDescription = item.descripcion,
+                modifier = Modifier
+                    .size(80.dp)
+                    .padding(end = 12.dp)
+            )
+
+            // 📦 INFO PRODUCTO
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+
+                Text(
+                    item.codigo ?: "",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Text(
+                    item.descripcion ?: "",
+                    maxLines = 2
+                )
+
+                Text("Stock: ${item.cantidad ?: 0}")
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+
+                    OutlinedTextField(
+                        value = cantidad,
+                        onValueChange = { cantidad = it },
+                        modifier = Modifier.width(80.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Button(onClick = {
+                        onAgregar(cantidad.toIntOrNull() ?: 0)
+                    }) {
+                        Text("Agregar")
+                    }
+                }
+            }
+        }
+    }
+}
+@Composable
+fun CarritoResumen(
+    carrito: List<ItemCarrito>,
+    onSumar: (String) -> Unit,
+    onRestar: (String) -> Unit,
+    onEliminar: (String) -> Unit,
+    onConfirmar: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+    ) {
+
+        Text(
+            "Carrito (${carrito.size})",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        carrito.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    "${item.producto.descripcion}",
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = { onRestar(item.producto.id!!) }) {
+                    Text("➖")
+                }
+
+                Text("${item.cantidad}")
+
+                IconButton(onClick = { onSumar(item.producto.id!!) }) {
+                    Text("➕")
+                }
+
+                IconButton(onClick = { onEliminar(item.producto.id!!) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = onConfirmar,
+            enabled = carrito.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Confirmar pedido")
+        }
+    }
+}
+
