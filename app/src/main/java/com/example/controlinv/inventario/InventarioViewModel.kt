@@ -184,7 +184,7 @@ class InventarioViewModel : ViewModel() {
                 null
             }
         } catch (e: Exception) {
-            ultimoErrorSubida = e.message ?: "Excepción sin detalle"
+            ultimoErrorSubida = "${e::class.java.simpleName}: ${e.message ?: "sin detalle"}"
             Log.e("INVENTARIO_UPLOAD", "Error subiendo imagen", e)
             null
         }

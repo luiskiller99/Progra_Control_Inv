@@ -1,13 +1,9 @@
 package com.example.controlinv.main
 
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,77 +11,38 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import com.example.controlinv.inventario.InventarioLogsScreen
-import com.example.controlinv.R
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
-import com.example.controlinv.auth.supabase
-import com.example.controlinv.empleado.ItemCarrito
-import com.example.controlinv.empleado.PedidoViewModel
-import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.empleado.PedidosAdminScreen
+import com.example.controlinv.inventario.InventarioLogsScreen
+import com.example.controlinv.main.screens.InventarioScreen
+import com.example.controlinv.main.screens.LoginScreen
+import com.example.controlinv.main.screens.PedidoEmpleadoScreen
 import com.example.controlinv.ui.theme.ControlInvTheme
-import com.example.controlinv.inventario.InventarioViewModel
-import com.example.controlinv.inventario.model.Inventario
-import com.example.controlinv.inventario.logout
-import io.github.jan.supabase.gotrue.auth
 
-private val colCodigo = 90.dp
-private val colDescripcion = 180.dp
-private val colCantidad = 80.dp
-private val colClase = 100.dp
-private val colAcciones = 90.dp
-enum class AdminTab  {
+enum class AdminTab {
     INVENTARIO,
     PEDIDOS,
     LOGS
 }
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,678 +50,83 @@ class MainActivity : ComponentActivity() {
             ControlInvTheme {
                 val loginVM: LoginViewModel = viewModel()
                 when (val estado = loginVM.estado) {
-                is EstadoLogin.Login -> {
-                    LoginScreen { email, pass ->
-                        loginVM.login(email, pass)
-                    }
-                }
-                is EstadoLogin.Admin -> {
-                    var adminTab by remember { mutableStateOf(AdminTab.INVENTARIO) }
-                    Scaffold { padding ->
-                        Column(
-                            modifier = Modifier
-                                .padding(padding)
-                                .fillMaxSize()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(35.dp) // 👈 AQUÍ controlas el tamaño REAL
-                                    .padding(horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TextButton(onClick = { adminTab = AdminTab.INVENTARIO }) {
-                                    Text("Inventario")
-                                }
-                                TextButton(onClick = { adminTab = AdminTab.PEDIDOS }) {
-                                    Text("Pedidos")
-                                }
-                                TextButton(onClick = { adminTab = AdminTab.LOGS }) {
-                                    Text("Ediciones")
-                                }
-                                Spacer(Modifier.weight(1f))
-                                IconButton(onClick = { loginVM.logout() }) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ExitToApp,
-                                        contentDescription = "Salir"
-                                    )
-                                }
-                            }
-                            when (adminTab) {
-                                AdminTab.INVENTARIO -> InventarioScreen()
-                                AdminTab.PEDIDOS -> PedidosAdminScreen()
-                                AdminTab.LOGS -> InventarioLogsScreen()
-                            }
+                    is EstadoLogin.Login -> {
+                        LoginScreen { email, pass ->
+                            loginVM.login(email, pass)
                         }
-                    }
-                }
-                is EstadoLogin.Empleado -> {
-                    PedidoEmpleadoScreen(
-                        onLogout = {
-                            loginVM.logout()
-                        }
-                    )
-                }
-                is EstadoLogin.Error -> {
-                    LoginScreen { email, pass ->
-                        loginVM.login(email, pass)
                     }
 
-                    LaunchedEffect(estado) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            estado.mensaje,
-                            Toast.LENGTH_LONG
-                        ).show()
+                    is EstadoLogin.Admin -> {
+                        var adminTab by remember { mutableStateOf(AdminTab.INVENTARIO) }
+                        Scaffold { padding ->
+                            Column(
+                                modifier = Modifier
+                                    .padding(padding)
+                                    .fillMaxSize()
+                            ) {
+                                AdminTabs(
+                                    adminTab = adminTab,
+                                    onChangeTab = { adminTab = it },
+                                    onLogout = { loginVM.logout() }
+                                )
+
+                                when (adminTab) {
+                                    AdminTab.INVENTARIO -> InventarioScreen()
+                                    AdminTab.PEDIDOS -> PedidosAdminScreen()
+                                    AdminTab.LOGS -> InventarioLogsScreen()
+                                }
+                            }
+                        }
+                    }
+
+                    is EstadoLogin.Empleado -> {
+                        PedidoEmpleadoScreen(onLogout = { loginVM.logout() })
+                    }
+
+                    is EstadoLogin.Error -> {
+                        LoginScreen { email, pass ->
+                            loginVM.login(email, pass)
+                        }
+
+                        LaunchedEffect(estado) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                estado.mensaje,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
-            }
             }
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun PedidoEmpleadoScreen(
+private fun AdminTabs(
+    adminTab: AdminTab,
+    onChangeTab: (AdminTab) -> Unit,
     onLogout: () -> Unit
 ) {
-    val pedidoViewModel: PedidoViewModel = viewModel(
-        factory = PedidoViewModelFactory(supabase)
-    )
-    var textoBusqueda by remember { mutableStateOf("") }
-    if (pedidoViewModel.cargando) {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-    }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Inventario") },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-                Text(
-                    "Catálogo de productos",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-            OutlinedTextField(
-                value = textoBusqueda,
-                onValueChange = { texto ->
-                    textoBusqueda = texto
-                    pedidoViewModel.filtrarInventario(texto)
-                },
-                label = { Text("Buscar producto") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                }
-            )
-
-            LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
-                        ProductoCard(
-                            item = item,
-                            onAgregar = { cant ->
-                                pedidoViewModel.agregarAlCarrito(item, cant)
-                            }
-                        )
-                    }
-                }
-
-                Divider()
-
-                val userId = supabase.auth.currentUserOrNull()?.id
-                CarritoResumen(
-                carrito = pedidoViewModel.carrito,
-                onSumar = { id ->
-                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                    if (item != null) {
-                        pedidoViewModel.agregarAlCarrito(item.producto, 1)
-                    }
-                },
-                onRestar = { id ->
-                    pedidoViewModel.restarDelCarrito(id)
-                },
-                onEliminar = { id ->
-                    pedidoViewModel.quitarDelCarrito(id)
-                },
-                onConfirmar = {
-                    if (userId == null) return@CarritoResumen
-                    val emailUsuario =
-                        supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-
-                    pedidoViewModel.confirmarPedido(
-                        userId = userId,
-                        email = emailUsuario,
-                        onOk = {},
-                        onError = {}
-                    )
-                }
-            )
-
-
-        }
-        }
-}
-@Composable
-fun LoginScreen(onLogin: (String, String) -> Unit) {
-
-    var email by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Usuario") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = pass,
-            onValueChange = { pass = it },
-            label = { Text("Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = { onLogin(email.trim(), pass) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Ingresar")
-        }
-    }
-}
-@Composable
-fun InventarioScreen(
-    viewModel: InventarioViewModel = viewModel()
-) {
-    val context = LocalContext.current
-    val scrollHorizontal = rememberScrollState()
-    var eliminarId by remember { mutableStateOf<String?>(null) }
-    var creando by remember { mutableStateOf(false) }
-
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { creando = true }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar")
-            }
-        }
-    ) { padding ->
-
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .fillMaxSize()
-        ) {
-
-            if (viewModel.cargando) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-            }
-
-            BuscadorInventario(viewModel)
-
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(scrollHorizontal)
-                    .fillMaxWidth()
-            ) {
-                Column {
-
-                    InventarioHeader()
-
-                    LazyColumn {
-                        items(viewModel.inventario, key = { it.id ?: "" }) { item ->
-                            InventarioRow(
-                                item = item,
-                                onGuardar = viewModel::guardarFila,
-                                onDelete = { eliminarId = item.id },
-                                onDiscard = { viewModel.descartarFila(item.id!!) }
-                            )
-                            Divider()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (creando) {
-        NuevoInventarioDialog(
-            onSave = { item, imagenBytes, extension ->
-                viewModel.agregar(
-                    item = item,
-                    imagenBytes = imagenBytes,
-                    extension = extension,
-                    onOk = { creando = false },
-                    onError = { mensaje -> Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show() }
-                )
-            },
-            onDismiss = { creando = false }
-        )
-    }
-
-    if (eliminarId != null) {
-        AlertDialog(
-            onDismissRequest = { eliminarId = null },
-            title = { Text("Eliminar producto") },
-            text = { Text("¿Seguro que deseas eliminar este producto?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.eliminar(eliminarId!!)
-                        eliminarId = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { eliminarId = null }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun BuscadorInventario(viewModel: InventarioViewModel) {
-    var texto by remember { mutableStateOf("") }
-
-    OutlinedTextField(
-        value = texto,
-        onValueChange = {
-            texto = it
-            viewModel.filtrar(it)
-        },
-        label = { Text("Buscar producto") },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null)
-        }
-    )
-}
-@Composable
-fun NuevoInventarioDialog(
-    onSave: (Inventario, ByteArray?, String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var codigo by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    var cantidad by remember { mutableStateOf("") }
-    var clasificacion by remember { mutableStateOf("") }
-    var imagenSeleccionada by remember { mutableStateOf<Uri?>(null) }
-    val context = LocalContext.current
-    val launcherImagen = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        imagenSeleccionada = uri
-    }
-
-    val valido = codigo.isNotBlank() &&
-            descripcion.isNotBlank() &&
-            cantidad.toIntOrNull() != null &&
-            imagenSeleccionada != null
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Agregar producto") },
-
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(
-                        Inventario(
-                            codigo = codigo.trim(),
-                            descripcion = descripcion.trim(),
-                            cantidad = cantidad.toInt(),
-                            clasificacion = clasificacion.trim()
-                        ),
-                        imagenSeleccionada?.let { uri ->
-                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                        },
-                        obtenerExtensionImagen(imagenSeleccionada?.let { context.contentResolver.getType(it) })
-                    )
-                },
-                enabled = valido
-            ) {
-                Text("Guardar")
-            }
-        },
-
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        },
-
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                OutlinedTextField(
-                    value = codigo,
-                    onValueChange = { codigo = it },
-                    label = { Text("Código") },
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción") }
-                )
-
-                OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = { cantidad = it },
-                    label = { Text("Cantidad") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = clasificacion,
-                    onValueChange = { clasificacion = it },
-                    label = { Text("Clasificación") },
-                    singleLine = true
-                )
-
-                Button(onClick = { launcherImagen.launch("image/*") }) {
-                    Text(if (imagenSeleccionada == null) "Seleccionar imagen" else "Cambiar imagen")
-                }
-
-                if (imagenSeleccionada != null) {
-                    Text("Imagen seleccionada")
-                    AsyncImage(
-                        model = imagenSeleccionada,
-                        contentDescription = "Vista previa",
-                        modifier = Modifier.size(100.dp)
-                    )
-                } else {
-                    Text("Debes seleccionar una imagen para guardar el producto")
-                }
-            }
-        }
-    )
-}
-
-private fun obtenerExtensionImagen(mimeType: String?): String {
-    return when (mimeType?.lowercase()) {
-        "image/png" -> "png"
-        "image/webp" -> "webp"
-        else -> "jpg"
-    }
-}
-
-@Composable
-fun InventarioHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .height(35.dp)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Código", Modifier.width(colCodigo))
-        Text("Descripción", Modifier.width(colDescripcion))
-        Text("Cantidad", Modifier.width(colCantidad))
-        Text("Clase", Modifier.width(colClase))
-        Text("Acciones", Modifier.width(colAcciones))
-    }
-    Divider()
-}
-@Composable
-fun InventarioRow(
-    item: Inventario,
-    onGuardar: (Inventario) -> Unit,
-    onDelete: () -> Unit,
-    onDiscard: () -> Unit
-) {
-    var codigo by remember { mutableStateOf(item.codigo ?: "") }
-    var descripcion by remember { mutableStateOf(item.descripcion ?: "") }
-    var cantidad by remember { mutableStateOf(item.cantidad?.toString() ?: "") }
-    var clase by remember { mutableStateOf(item.clasificacion ?: "") }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        CampoTabla(codigo, {
-            codigo = it
-        }, colCodigo)
-
-        CampoTabla(descripcion, {
-            descripcion = it
-        }, colDescripcion)
-
-        CampoTabla(cantidad, {
-            cantidad = it
-        }, colCantidad)
-
-        CampoTabla(clase, {
-            clase = it
-        }, colClase)
-
-
-        Row(
-            modifier = Modifier.width(colAcciones),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-
-            // ✔ Guardar fila
-            IconButton(onClick = {
-                onGuardar(
-                    item.copy(
-                        codigo = codigo,
-                        descripcion = descripcion,
-                        cantidad = cantidad.toIntOrNull() ?: item.cantidad,
-                        clasificacion = clase
-                    )
-                )
-            }) {
-                Icon(Icons.Default.Check, contentDescription = "Guardar")
-            }
-
-
-            // 🗑 Eliminar fila
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-            }
-
-            // ↩ Descartar fila
-            IconButton(onClick = onDiscard) {
-                Text("↩")
-            }
+        TextButton(onClick = { onChangeTab(AdminTab.INVENTARIO) }) {
+            Text("Inventario")
         }
-
-    }
-
-    Divider()
-}
-@Composable
-fun CampoTabla(
-    valor: String,
-    onChange: (String) -> Unit,
-    width: Dp
-) {
-    Surface(
-        modifier = Modifier.width(width),
-        tonalElevation = 1.dp,
-        shape = MaterialTheme.shapes.small
-    ) {
-        BasicTextField(
-            value = valor,
-            onValueChange = onChange,
-            singleLine = true,
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth()
-        )
-    }
-}
-@Composable
-fun ProductoCard(
-    item: Inventario,
-    onAgregar: (Int) -> Unit
-) {
-    var cantidad by remember { mutableStateOf("1") }
-
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp)
-        ) {
-
-            // 🖼️ IMAGEN
-            AsyncImage(
-                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
-                contentDescription = item.descripcion,
-                modifier = Modifier
-                    .size(80.dp)
-                    .padding(end = 12.dp)
-            )
-
-            // 📦 INFO PRODUCTO
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    item.codigo ?: "",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Text(
-                    item.descripcion ?: "",
-                    maxLines = 2
-                )
-
-                Text("Stock: ${item.cantidad ?: 0}")
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-
-                    OutlinedTextField(
-                        value = cantidad,
-                        onValueChange = { cantidad = it },
-                        modifier = Modifier.width(80.dp),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        singleLine = true
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Button(onClick = {
-                        onAgregar(cantidad.toIntOrNull() ?: 0)
-                    }) {
-                        Text("Agregar")
-                    }
-                }
-            }
+        TextButton(onClick = { onChangeTab(AdminTab.PEDIDOS) }) {
+            Text("Pedidos")
+        }
+        TextButton(onClick = { onChangeTab(AdminTab.LOGS) }) {
+            Text("Ediciones")
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onLogout) {
+            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Salir")
         }
     }
 }
-@Composable
-fun CarritoResumen(
-    carrito: List<ItemCarrito>,
-    onSumar: (String) -> Unit,
-    onRestar: (String) -> Unit,
-    onEliminar: (String) -> Unit,
-    onConfirmar: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp)
-    ) {
-
-        Text(
-            "Carrito (${carrito.size})",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        carrito.forEach { item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Text(
-                    "${item.producto.descripcion}",
-                    modifier = Modifier.weight(1f)
-                )
-
-                IconButton(onClick = { onRestar(item.producto.id!!) }) {
-                    Text("➖")
-                }
-
-                Text("${item.cantidad}")
-
-                IconButton(onClick = { onSumar(item.producto.id!!) }) {
-                    Text("➕")
-                }
-
-                IconButton(onClick = { onEliminar(item.producto.id!!) }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = onConfirmar,
-            enabled = carrito.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Confirmar pedido")
-        }
-    }
-}
-
