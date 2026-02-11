@@ -58,16 +58,34 @@ class InventarioViewModel : ViewModel() {
                 .map { it.copy() }
         }
     }
-    fun agregar(item: Inventario, imagenBytes: ByteArray? = null, extension: String = "jpg") {
+    fun agregar(
+        item: Inventario,
+        imagenBytes: ByteArray? = null,
+        extension: String = "jpg",
+        onOk: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            val urlImagen = if (imagenBytes != null) {
-                subirImagenProducto(imagenBytes, extension)
-            } else {
-                null
+            try {
+                val urlImagen = if (imagenBytes != null) {
+                    subirImagenProducto(imagenBytes, extension)
+                } else {
+                    null
+                }
+
+                if (imagenBytes != null && urlImagen == null) {
+                    onError("No se pudo subir la imagen a Supabase. Intenta de nuevo.")
+                    return@launch
+                }
+
+                val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
+                inventarioCompleto = inventarioCompleto + creado
+                inventario = inventarioCompleto.map { it.copy() }
+                onOk()
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error agregando inventario", e)
+                onError("No se pudo guardar el producto.")
             }
-            val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
-            inventarioCompleto = inventarioCompleto + creado
-            inventario = inventarioCompleto.map { it.copy() }
         }
     }
     fun eliminar(id: String) {
@@ -125,10 +143,17 @@ class InventarioViewModel : ViewModel() {
             val filePath = "inventario/${UUID.randomUUID()}.$extension"
             val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
 
+            val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
+            if (accessToken == null) {
+                Log.e("INVENTARIO", "No hay sesión activa para subir imagen")
+                return null
+            }
+
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
                 setRequestProperty("apikey", SUPABASE_KEY)
+                setRequestProperty("Authorization", "Bearer $accessToken")
                 val accessToken = supabase.auth.currentSessionOrNull()?.accessToken
                 setRequestProperty(
                     "Authorization",
@@ -146,6 +171,13 @@ class InventarioViewModel : ViewModel() {
             if (code in 200..299) {
                 "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
             } else {
+                val errorBody = runCatching {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+                Log.e(
+                    "INVENTARIO",
+                    "Error subiendo imagen a Supabase. Código: $code. Detalle: $errorBody"
+                )
                 Log.e("INVENTARIO", "Error subiendo imagen a Supabase. Código: $code")
                 null
             }

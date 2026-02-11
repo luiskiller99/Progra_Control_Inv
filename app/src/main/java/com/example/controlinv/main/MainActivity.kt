@@ -305,6 +305,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 fun InventarioScreen(
     viewModel: InventarioViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val scrollHorizontal = rememberScrollState()
     var eliminarId by remember { mutableStateOf<String?>(null) }
     var creando by remember { mutableStateOf(false) }
@@ -359,6 +360,13 @@ fun InventarioScreen(
     if (creando) {
         NuevoInventarioDialog(
             onSave = { item, imagenBytes, extension ->
+                viewModel.agregar(
+                    item = item,
+                    imagenBytes = imagenBytes,
+                    extension = extension,
+                    onOk = { creando = false },
+                    onError = { mensaje -> Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show() }
+                )
                 viewModel.agregar(item, imagenBytes, extension)
                 creando = false
             },
@@ -431,6 +439,8 @@ fun NuevoInventarioDialog(
 
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
+            cantidad.toIntOrNull() != null &&
+            imagenSeleccionada != null
             cantidad.toIntOrNull() != null
 
     AlertDialog(
@@ -507,6 +517,8 @@ fun NuevoInventarioDialog(
                         contentDescription = "Vista previa",
                         modifier = Modifier.size(100.dp)
                     )
+                } else {
+                    Text("Debes seleccionar una imagen para guardar el producto")
                 }
             }
         }
