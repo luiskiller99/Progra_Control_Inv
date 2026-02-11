@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
@@ -69,14 +70,14 @@ class InventarioViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                val urlImagen = if (imagenBytes != null) {
+                val urlImagen: String? = if (imagenBytes != null) {
                     subirImagenProducto(imagenBytes, extension)
                 } else {
                     null
                 }
 
                 if (imagenBytes != null && urlImagen == null) {
-                    onError("No se pudo subir la imagen a Supabase. Intenta de nuevo.")
+                    onError("No se pudo subir la imagen a Supabase")
                     return@launch
                 }
 
@@ -87,7 +88,6 @@ class InventarioViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("INVENTARIO", "Error agregando inventario", e)
                 onError("No se pudo guardar el producto: ${e.message}")
-                onError("No se pudo guardar el producto.")
             }
         }
     }
@@ -143,7 +143,7 @@ class InventarioViewModel : ViewModel() {
     private suspend fun subirImagenProducto(
         imagenBytes: ByteArray,
         extension: String
-    ): Result<String> {
+    ): String? {
         return try {
             val bucket = "productos"
             val extensionNormalizada = when (extension.lowercase()) {
@@ -169,16 +169,17 @@ class InventarioViewModel : ViewModel() {
 
             val code = connection.responseCode
             if (code in 200..299) {
-                Result.success("$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath")
+                "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
             } else {
                 val errorBody = runCatching {
                     connection.errorStream?.bufferedReader()?.use { it.readText() }
                 }.getOrNull()
-                Result.failure(Exception("HTTP $code ${errorBody ?: "sin detalle"}"))
+                Log.e("INVENTARIO", "Error upload imagen HTTP $code: ${errorBody ?: "sin detalle"}")
+                null
             }
         } catch (e: Exception) {
             Log.e("INVENTARIO", "Error subiendo imagen", e)
-            Result.failure(e)
+            null
         }
     }
 
