@@ -6,13 +6,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.Main.Inventario
+import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 class InventarioViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
@@ -53,11 +57,36 @@ class InventarioViewModel : ViewModel() {
                 .map { it.copy() }
         }
     }
-    fun agregar(item: Inventario) {
+    fun agregar(
+        item: Inventario,
+        imagenBytes: ByteArray? = null,
+        extension: String = "jpg",
+        onOk: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            val creado = insertarInventario(item)
-            inventarioCompleto = inventarioCompleto + creado
-            inventario = inventarioCompleto.map { it.copy() }
+            try {
+                val urlImagen = if (imagenBytes != null) {
+                    val uploadResult = subirImagenProducto(imagenBytes, extension)
+                    if (uploadResult.isFailure) {
+                        val detalle = uploadResult.exceptionOrNull()?.message
+                            ?: "Error desconocido"
+                        onError("No se pudo subir la imagen: $detalle")
+                        return@launch
+                    }
+                    uploadResult.getOrNull()
+                } else {
+                    null
+                }
+
+                val creado = insertarInventario(item.copy(imagen = urlImagen ?: item.imagen))
+                inventarioCompleto = inventarioCompleto + creado
+                inventario = inventarioCompleto.map { it.copy() }
+                onOk()
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error agregando inventario", e)
+                onError("No se pudo guardar el producto: ${e.message}")
+            }
         }
     }
     fun eliminar(id: String) {
@@ -108,6 +137,34 @@ class InventarioViewModel : ViewModel() {
             if (it.id == id) original.copy() else it
         }
     }
+
+    private suspend fun subirImagenProducto(
+        imagenBytes: ByteArray,
+        extension: String
+    ): Result<String> {
+        return try {
+            val bucket = "productos"
+            val extensionNormalizada = when (extension.lowercase()) {
+                "jpeg" -> "jpg"
+                else -> extension.lowercase()
+            }
+            val filePath = "inventario/${UUID.randomUUID()}.$extensionNormalizada"
+
+            supabase.storage
+                .from(bucket)
+                .upload(
+                    path = filePath,
+                    data = imagenBytes,
+                    upsert = true
+                )
+
+            Result.success("$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath")
+        } catch (e: Exception) {
+            Log.e("INVENTARIO", "Error subiendo imagen", e)
+            Result.failure(e)
+        }
+    }
+
 }
 suspend fun insertarInventario(item: Inventario): Inventario {
     return supabase
