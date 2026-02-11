@@ -28,6 +28,7 @@ class InventarioViewModel : ViewModel() {
     private var inventarioCompleto = listOf<Inventario>()
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
+    private var ultimoErrorSubida: String? = null
 
     init {
         cargarInventario()
@@ -77,7 +78,9 @@ class InventarioViewModel : ViewModel() {
                 }
 
                 if (imagenBytes != null && urlImagen == null) {
-                    onError("No se pudo subir la imagen a Supabase")
+                    val detalle = ultimoErrorSubida ?: "Sin detalle"
+                    Log.e("INVENTARIO_UPLOAD", "Fallo subida imagen: $detalle")
+                    onError("No se pudo subir la imagen a Supabase: $detalle")
                     return@launch
                 }
 
@@ -145,6 +148,7 @@ class InventarioViewModel : ViewModel() {
         extension: String
     ): String? {
         return try {
+            ultimoErrorSubida = null
             val bucket = "productos"
             val extensionNormalizada = when (extension.lowercase()) {
                 "jpeg" -> "jpg"
@@ -169,16 +173,19 @@ class InventarioViewModel : ViewModel() {
 
             val code = connection.responseCode
             if (code in 200..299) {
+                Log.i("INVENTARIO_UPLOAD", "Imagen subida correctamente: $filePath")
                 "$SUPABASE_URL/storage/v1/object/public/$bucket/$filePath"
             } else {
                 val errorBody = runCatching {
                     connection.errorStream?.bufferedReader()?.use { it.readText() }
                 }.getOrNull()
-                Log.e("INVENTARIO", "Error upload imagen HTTP $code: ${errorBody ?: "sin detalle"}")
+                ultimoErrorSubida = "HTTP $code ${errorBody ?: "sin detalle"}"
+                Log.e("INVENTARIO_UPLOAD", "Error upload imagen: ${ultimoErrorSubida}")
                 null
             }
         } catch (e: Exception) {
-            Log.e("INVENTARIO", "Error subiendo imagen", e)
+            ultimoErrorSubida = e.message ?: "Excepción sin detalle"
+            Log.e("INVENTARIO_UPLOAD", "Error subiendo imagen", e)
             null
         }
     }
