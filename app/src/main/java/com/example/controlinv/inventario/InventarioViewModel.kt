@@ -1,18 +1,20 @@
 package com.example.controlinv.inventario
 
 import android.util.Log
+import com.example.controlinv.auth.SUPABASE_KEY
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.inventario.model.Inventario
-import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
@@ -144,25 +146,33 @@ class InventarioViewModel : ViewModel() {
         imagenBytes: ByteArray,
         extension: String
     ): String? {
-        return try {
+        return withContext(Dispatchers.IO) {
+            try {
             ultimoErrorSubida = null
             val bucket = "productos"
-            val extensionNormalizada = when (extension.lowercase()) {
-                "jpeg" -> "jpg"
-                else -> extension.lowercase()
+            val extensionNormalizada = extension.lowercase()
+            val mimeType = when (extensionNormalizada) {
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                else -> "application/octet-stream"
             }
             val filePath = "inventario/${UUID.randomUUID()}.$extensionNormalizada"
             val endpoint = "$SUPABASE_URL/storage/v1/object/$bucket/$filePath"
 
-            val token = supabase.auth.currentSessionOrNull()?.accessToken
-            val authToken = token ?: SUPABASE_KEY
+            val authToken = supabase.auth.currentSessionOrNull()?.accessToken
+            if (authToken.isNullOrBlank()) {
+                ultimoErrorSubida = "No hay sesión autenticada para subir imagen"
+                Log.e("INVENTARIO_UPLOAD", ultimoErrorSubida ?: "")
+                //return null
+            }
 
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
                 setRequestProperty("apikey", SUPABASE_KEY)
                 setRequestProperty("Authorization", "Bearer $authToken")
-                setRequestProperty("Content-Type", "image/$extensionNormalizada")
+                setRequestProperty("Content-Type", mimeType)
                 setRequestProperty("x-upsert", "true")
             }
 
@@ -180,10 +190,11 @@ class InventarioViewModel : ViewModel() {
                 Log.e("INVENTARIO_UPLOAD", "Error upload imagen: ${ultimoErrorSubida}")
                 null
             }
-        } catch (e: Exception) {
-            ultimoErrorSubida = "${e::class.java.simpleName}: ${e.message ?: "sin detalle"}"
-            Log.e("INVENTARIO_UPLOAD", "Error subiendo imagen", e)
-            null
+            } catch (e: Exception) {
+                ultimoErrorSubida = "${e::class.java.simpleName}: ${e.message ?: "sin detalle"}"
+                Log.e("INVENTARIO_UPLOAD", "Error subiendo imagen", e)
+                null
+            }
         }
     }
 

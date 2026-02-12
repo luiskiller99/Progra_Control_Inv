@@ -1,8 +1,9 @@
 package com.example.controlinv.empleado
 
+import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,14 +13,17 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+
 
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
 )
+
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -29,47 +33,65 @@ class PedidoViewModel(
         private set
     var cargando by mutableStateOf(false)
         private set
+
     private var inventarioOriginal: List<Inventario> = emptyList()
+
     init {
         cargarInventario()
     }
+
     fun confirmarPedido(
         userId: String,
         email: String,
         onOk: () -> Unit,
         onError: (String) -> Unit
     ) {
-            viewModelScope.launch {
-                try {
+        viewModelScope.launch {
+            try {
+                val itemsValidos = carrito.filter { it.producto.id != null && it.cantidad > 0 }
+                if (itemsValidos.isEmpty()) {
+                    onError("El carrito no tiene items válidos")
+                    return@launch
+                }
+
                 val itemsJson = JsonArray(
-                    carrito.map {
+                    itemsValidos.map {
                         JsonObject(
                             mapOf(
                                 "producto_id" to JsonPrimitive(it.producto.id!!),
-                                "cantidad" to JsonPrimitive(it.cantidad),
+                                "cantidad" to JsonPrimitive(it.cantidad)
                             )
                         )
                     }
                 )
-                supabase.postgrest.rpc(
-                    "crear_pedido",
-                    JsonObject(
+
+                val pedidoCreadoId = supabase.postgrest.rpc(
+                    function = "crear_pedido",
+                    parameters = JsonObject(
                         mapOf(
                             "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
                             "p_items" to itemsJson
                         )
                     )
-                )
+                ).decodeSingle<String>()
+
+                Log.i("PEDIDO", "Pedido creado correctamente: $pedidoCreadoId")
                 carrito.clear()
                 onOk()
-                } catch (e: Exception) {
-                    val mensaje = e.message ?: "Error desconocido al crear pedido"
-                    onError(mensaje)
+            } catch (e: Exception) {
+                Log.e("PEDIDO", "Error creando pedido", e)
+                val mensajeOriginal = e.message ?: ""
+                val mensajeUsuario = when {
+                    mensajeOriginal.contains("Stock insuficiente", ignoreCase = true) ->
+                        "No hay stock suficiente para uno o más productos del carrito."
+                    else -> "No se pudo crear el pedido: ${mensajeOriginal.ifBlank { "error desconocido" }}"
                 }
+                onError(mensajeUsuario)
             }
-
+        }
     }
+
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
@@ -84,6 +106,7 @@ class PedidoViewModel(
             cargando = false
         }
     }
+
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
@@ -98,9 +121,11 @@ class PedidoViewModel(
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
+
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
+
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -114,13 +139,14 @@ class PedidoViewModel(
             }
         }
     }
+
     fun filtrarInventario(texto: String) {
         if (texto.isBlank()) {
             inventario = inventarioOriginal
         } else {
             inventario = inventarioOriginal.filter {
                 it.descripcion?.contains(texto, ignoreCase = true) == true ||
-                        it.clasificacion?.contains(texto, ignoreCase = true) == true
+                    it.clasificacion?.contains(texto, ignoreCase = true) == true
             }
         }
     }
