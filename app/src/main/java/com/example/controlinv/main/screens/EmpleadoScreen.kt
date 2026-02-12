@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.controlinv.R
+import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.ItemCarrito
 import com.example.controlinv.empleado.PedidoViewModel
@@ -177,7 +178,7 @@ fun ProductoCard(
             modifier = Modifier.padding(12.dp)
         ) {
             AsyncImage(
-                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
+                model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
                     .size(80.dp)
@@ -214,6 +215,22 @@ fun ProductoCard(
             }
         }
     }
+}
+
+private fun resolverImagenProducto(item: Inventario): String? {
+    val candidato = item.imagen?.takeIf { it.isNotBlank() }
+        ?: item.extra1?.takeIf { it.isNotBlank() }
+        ?: return null
+
+    if (candidato.startsWith("http://") || candidato.startsWith("https://")) {
+        return candidato
+    }
+
+    val pathLimpio = candidato.removePrefix("/")
+        .removePrefix("productos/")
+        .removePrefix("object/public/productos/")
+
+    return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
 
 @Composable
