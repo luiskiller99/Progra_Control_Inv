@@ -65,7 +65,7 @@ class PedidoViewModel(
                     }
                 )
 
-                val pedidoCreadoId = supabase.postgrest.rpc(
+                supabase.postgrest.rpc(
                     function = "crear_pedido",
                     parameters = JsonObject(
                         mapOf(
@@ -74,14 +74,28 @@ class PedidoViewModel(
                             "p_items" to itemsJson
                         )
                     )
-                ).decodeSingle<String>()
+                )
 
-                Log.i("PEDIDO", "Pedido creado correctamente: $pedidoCreadoId")
+                recargarInventario()
+                Log.i("PEDIDO", "Pedido creado correctamente")
                 carrito.clear()
                 onOk()
             } catch (e: Exception) {
                 Log.e("PEDIDO", "Error creando pedido", e)
                 val mensajeOriginal = e.message ?: ""
+                val esErrorParseoRetornoUuid =
+                    mensajeOriginal.contains("Unexpected JSON token", ignoreCase = true) &&
+                        mensajeOriginal.contains("JSON input", ignoreCase = true)
+
+                recargarInventario()
+
+                if (esErrorParseoRetornoUuid) {
+                    Log.w("PEDIDO", "Pedido creado pero falló parseo del UUID retornado por RPC")
+                    carrito.clear()
+                    onOk()
+                    return@launch
+                }
+
                 val mensajeUsuario = when {
                     mensajeOriginal.contains("Stock insuficiente", ignoreCase = true) ->
                         "No hay stock suficiente para uno o más productos del carrito."
@@ -94,6 +108,12 @@ class PedidoViewModel(
 
     private fun cargarInventario() {
         viewModelScope.launch {
+            recargarInventario()
+        }
+    }
+
+    private suspend fun recargarInventario() {
+        try {
             cargando = true
             val lista = supabase
                 .from("inventario")
@@ -102,7 +122,7 @@ class PedidoViewModel(
 
             inventarioOriginal = lista
             inventario = lista
-
+        } finally {
             cargando = false
         }
     }
