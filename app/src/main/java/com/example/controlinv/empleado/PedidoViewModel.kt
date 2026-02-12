@@ -18,14 +18,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
-)
-
-@Serializable
-private data class PedidoCreado(
-    val id: String
 )
 
 class PedidoViewModel(
@@ -63,67 +59,37 @@ class PedidoViewModel(
                         JsonObject(
                             mapOf(
                                 "producto_id" to JsonPrimitive(it.producto.id!!),
-                                "cantidad" to JsonPrimitive(it.cantidad),
+                                "cantidad" to JsonPrimitive(it.cantidad)
                             )
                         )
                     }
                 )
 
-                runCatching {
-                    supabase.postgrest.rpc(
-                        "crear_pedido",
-                        JsonObject(
-                            mapOf(
-                                "p_empleado_id" to JsonPrimitive(userId),
-                                "p_empleado_email" to JsonPrimitive(email),
-                                "p_items" to itemsJson
-                            )
+                val pedidoCreadoId = supabase.postgrest.rpc(
+                    function = "crear_pedido",
+                    parameters = JsonObject(
+                        mapOf(
+                            "p_empleado_id" to JsonPrimitive(userId),
+                            "p_empleado_email" to JsonPrimitive(email),
+                            "p_items" to itemsJson
                         )
                     )
-                }.onFailure { rpcError ->
-                    Log.w("PEDIDO", "RPC crear_pedido falló, intento fallback", rpcError)
-                    crearPedidoFallback(userId = userId, email = email, items = itemsValidos)
-                }
+                ).decodeSingle<String>()
 
+                Log.i("PEDIDO", "Pedido creado correctamente: $pedidoCreadoId")
                 carrito.clear()
                 onOk()
             } catch (e: Exception) {
                 Log.e("PEDIDO", "Error creando pedido", e)
-                val mensaje = e.message ?: "Error desconocido al crear pedido"
-                onError(mensaje)
+                val mensajeOriginal = e.message ?: ""
+                val mensajeUsuario = when {
+                    mensajeOriginal.contains("Stock insuficiente", ignoreCase = true) ->
+                        "No hay stock suficiente para uno o más productos del carrito."
+                    else -> "No se pudo crear el pedido: ${mensajeOriginal.ifBlank { "error desconocido" }}"
+                }
+                onError(mensajeUsuario)
             }
         }
-    }
-
-    private suspend fun crearPedidoFallback(
-        userId: String,
-        email: String,
-        items: List<ItemCarrito>
-    ) {
-        val pedido = supabase
-            .from("pedidos")
-            .insert(
-                mapOf(
-                    "empleado_id" to userId,
-                    "empleado_email" to email,
-                    "estado" to "ENVIADO"
-                )
-            ) {
-                select()
-            }
-            .decodeSingle<PedidoCreado>()
-
-        val detalles = items.map {
-            mapOf(
-                "pedido_id" to pedido.id,
-                "producto_id" to it.producto.id!!,
-                "cantidad" to it.cantidad
-            )
-        }
-
-        supabase
-            .from("pedido_detalle")
-            .insert(detalles)
     }
 
     private fun cargarInventario() {
