@@ -15,6 +15,7 @@ import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -43,17 +44,33 @@ class PedidoViewModel(
     fun confirmarPedido(
         userId: String,
         email: String,
+        comentario: String,
         onOk: () -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
+                // 1) Validamos que cada item tenga producto_id y cantidad > 0
                 val itemsValidos = carrito.filter { it.producto.id != null && it.cantidad > 0 }
                 if (itemsValidos.isEmpty()) {
                     onError("El carrito no tiene items válidos")
                     return@launch
                 }
 
+                // Validación local adicional: no enviar pedidos que dejarían stock negativo
+                val inventarioPorId = inventarioOriginal.associateBy { it.id }
+                val itemSinStock = itemsValidos.firstOrNull { item ->
+                    val stockActual = inventarioPorId[item.producto.id]?.cantidad ?: 0
+                    item.cantidad > stockActual
+                }
+                if (itemSinStock != null) {
+                    val nombre = itemSinStock.producto.descripcion ?: "producto"
+                    onError("Stock insuficiente para $nombre")
+                    recargarInventario()
+                    return@launch
+                }
+
+                // 2) Armamos el JSON que espera la función RPC crear_pedido en Supabase
                 val itemsJson = JsonArray(
                     itemsValidos.map {
                         JsonObject(
@@ -65,17 +82,20 @@ class PedidoViewModel(
                     }
                 )
 
+                // 3) Ejecutamos la RPC: ella valida stock, reserva inventario y crea detalle
                 supabase.postgrest.rpc(
                     function = "crear_pedido",
                     parameters = JsonObject(
                         mapOf(
                             "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
+                            "p_comentario" to if (comentario.isBlank()) JsonNull else JsonPrimitive(comentario),
                             "p_items" to itemsJson
                         )
                     )
                 )
 
+                // 4) Refrescamos catálogo para mostrar stock actualizado
                 recargarInventario()
                 Log.i("PEDIDO", "Pedido creado correctamente")
                 carrito.clear()
@@ -83,6 +103,7 @@ class PedidoViewModel(
             } catch (e: Exception) {
                 Log.e("PEDIDO", "Error creando pedido", e)
                 val mensajeOriginal = e.message ?: ""
+                // Caso conocido: el pedido sí se crea, pero falla parseo del UUID retornado
                 val esErrorParseoRetornoUuid =
                     mensajeOriginal.contains("Unexpected JSON token", ignoreCase = true) &&
                         mensajeOriginal.contains("JSON input", ignoreCase = true)
@@ -103,6 +124,12 @@ class PedidoViewModel(
                 }
                 onError(mensajeUsuario)
             }
+        }
+    }
+
+    fun refrescarInventario() {
+        viewModelScope.launch {
+            recargarInventario()
         }
     }
 

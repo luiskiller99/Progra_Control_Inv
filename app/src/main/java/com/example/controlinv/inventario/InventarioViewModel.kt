@@ -2,12 +2,12 @@ package com.example.controlinv.inventario
 
 import android.util.Log
 import com.example.controlinv.auth.SUPABASE_KEY
-import com.example.controlinv.auth.SUPABASE_KEY 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.controlinv.empleado.DetallePedido
 import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
@@ -21,7 +21,6 @@ import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
-
 class InventarioViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
         private set
@@ -29,11 +28,9 @@ class InventarioViewModel : ViewModel() {
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
     private var ultimoErrorSubida: String? = null
-
     init {
         cargarInventario()
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
@@ -94,11 +91,43 @@ class InventarioViewModel : ViewModel() {
             }
         }
     }
-    fun eliminar(id: String) {
+    fun eliminar(
+        id: String,
+        onOk: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            eliminarInventario(id)
-            inventarioCompleto = inventarioCompleto.filter { it.id != id }
-            inventario = inventario.filter { it.id != id }
+            try {
+                val relacionesPedidos = supabase
+                    .from("pedido_detalle")
+                    .select {
+                        filter { eq("producto_id", id) }
+                    }
+                    .decodeList<DetallePedido>()
+                    .size
+
+                if (relacionesPedidos > 0) {
+                    onError("No se puede eliminar: el producto está en $relacionesPedidos pedido(s).")
+                    return@launch
+                }
+
+                val imagenUrl = inventarioCompleto.find { it.id == id }?.imagen
+
+                eliminarInventario(id)
+                eliminarImagenProductoStorage(imagenUrl)
+
+                inventarioCompleto = inventarioCompleto.filter { it.id != id }
+                inventario = inventario.filter { it.id != id }
+                onOk()
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error eliminando inventario", e)
+                val mensaje = when {
+                    (e.message ?: "").contains("foreign key", ignoreCase = true) ->
+                        "No se puede eliminar: el producto está relacionado con pedidos."
+                    else -> "No se pudo eliminar el producto: ${e.message ?: "error desconocido"}"
+                }
+                onError(mensaje)
+            }
         }
     }
     fun guardarFila(itemNuevo: Inventario) {
@@ -143,6 +172,41 @@ class InventarioViewModel : ViewModel() {
         }
     }
 
+    private suspend fun eliminarImagenProductoStorage(imagenUrl: String?) {
+        if (imagenUrl.isNullOrBlank()) return
+
+        val basePrefix = "$SUPABASE_URL/storage/v1/object/public/productos/"
+        val path = when {
+            imagenUrl.startsWith(basePrefix) -> imagenUrl.removePrefix(basePrefix)
+            imagenUrl.contains("/storage/v1/object/public/productos/") ->
+                imagenUrl.substringAfter("/storage/v1/object/public/productos/")
+            else -> imagenUrl.removePrefix("/")
+                .removePrefix("productos/")
+                .removePrefix("object/public/productos/")
+        }.substringBefore("?")
+
+        if (path.isBlank()) return
+
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = supabase.auth.currentSessionOrNull()?.accessToken ?: return@runCatching
+                val endpoint = "$SUPABASE_URL/storage/v1/object/productos/$path"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    setRequestProperty("apikey", SUPABASE_KEY)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val code = connection.responseCode
+                if (code !in 200..299 && code != 404) {
+                    val body = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                    Log.w("INVENTARIO_UPLOAD", "No se pudo borrar imagen storage ($code): ${body ?: "sin detalle"}")
+                }
+            }.onFailure {
+                Log.w("INVENTARIO_UPLOAD", "Error borrando imagen storage", it)
+            }
+        }
+    }
+
     private suspend fun subirImagenProducto(
         imagenBytes: ByteArray,
         extension: String
@@ -165,6 +229,7 @@ class InventarioViewModel : ViewModel() {
             if (authToken.isNullOrBlank()) {
                 ultimoErrorSubida = "No hay sesión autenticada para subir imagen"
                 Log.e("INVENTARIO_UPLOAD", ultimoErrorSubida ?: "")
+                //return null
             }
 
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -215,7 +280,4 @@ suspend fun eliminarInventario(id: String) {
             }
         }
 
-}
-suspend fun logout() {
-    supabase.auth.signOut()
 }

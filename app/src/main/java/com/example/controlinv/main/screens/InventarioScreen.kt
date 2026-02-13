@@ -134,7 +134,15 @@ fun InventarioScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.eliminar(eliminarId!!)
+                        viewModel.eliminar(
+                            id = eliminarId!!,
+                            onOk = {
+                                Toast.makeText(context, "Producto eliminado", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { mensaje ->
+                                Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                            }
+                        )
                         eliminarId = null
                     },
                     colors = ButtonDefaults.buttonColors(
