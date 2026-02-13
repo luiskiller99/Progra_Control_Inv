@@ -26,6 +26,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,19 +35,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.controlinv.R
+import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.ItemCarrito
 import com.example.controlinv.empleado.PedidoViewModel
 import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +62,8 @@ fun PedidoEmpleadoScreen(
         factory = PedidoViewModelFactory(supabase)
     )
     var textoBusqueda by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     if (pedidoViewModel.cargando) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -64,6 +72,7 @@ fun PedidoEmpleadoScreen(
     val userId = supabase.auth.currentUserOrNull()?.id
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Inventario") },
@@ -86,15 +95,29 @@ fun PedidoEmpleadoScreen(
                 onRestar = { id -> pedidoViewModel.restarDelCarrito(id) },
                 onEliminar = { id -> pedidoViewModel.quitarDelCarrito(id) },
                 onConfirmar = {
-                    if (userId == null) return@CarritoResumen
+                    if (userId == null) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("No hay usuario autenticado")
+                        }
+                        return@CarritoResumen
+                    }
+
                     val emailUsuario =
                         supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
 
                     pedidoViewModel.confirmarPedido(
                         userId = userId,
                         email = emailUsuario,
-                        onOk = {},
-                        onError = {}
+                        onOk = {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Pedido creado correctamente")
+                            }
+                        },
+                        onError = { error ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(error)
+                            }
+                        }
                     )
                 }
             )
@@ -156,43 +179,75 @@ fun ProductoCard(
             modifier = Modifier.padding(12.dp)
         ) {
             AsyncImage(
-                model = item.imagen ?: item.extra1 ?: R.drawable.placeholder_producto,
+                model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
-                    .size(80.dp)
-                    .padding(end = 12.dp)
+                    .size(64.dp)
+                    .padding(end = 10.dp)
             )
 
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(item.codigo ?: "", style = MaterialTheme.typography.titleMedium)
-                Text(item.descripcion ?: "", maxLines = 2)
-                Text("Stock: ${item.cantidad ?: 0}")
+                Text(
+                    text = item.codigo ?: "",
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = item.descripcion ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Stock: ${item.cantidad ?: 0}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 6.dp)
                 ) {
                     OutlinedTextField(
                         value = cantidad,
                         onValueChange = { cantidad = it },
-                        modifier = Modifier.width(80.dp),
+                        modifier = Modifier.width(64.dp),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Number
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(8.dp))
 
                     Button(onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) }) {
-                        Text("Agregar")
+                        Text("Agregar", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
         }
     }
+}
+
+private fun resolverImagenProducto(item: Inventario): String? {
+    val candidato = item.imagen?.takeIf { it.isNotBlank() }
+        ?: item.extra1?.takeIf { it.isNotBlank() }
+        ?: return null
+
+    if (candidato.startsWith("http://") || candidato.startsWith("https://")) {
+        return candidato
+    }
+
+    val pathLimpio = candidato.removePrefix("/")
+        .removePrefix("productos/")
+        .removePrefix("object/public/productos/")
+
+    return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
 
 @Composable
