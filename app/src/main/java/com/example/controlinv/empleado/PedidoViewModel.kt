@@ -43,6 +43,7 @@ class PedidoViewModel(
     fun confirmarPedido(
         userId: String,
         email: String,
+        comentario: String,
         onOk: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -74,6 +75,7 @@ class PedidoViewModel(
                         mapOf(
                             "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
+                            "p_comentario" to JsonPrimitive(comentario),
                             "p_items" to itemsJson
                         )
                     )

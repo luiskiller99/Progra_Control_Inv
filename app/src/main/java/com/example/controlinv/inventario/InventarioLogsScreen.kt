@@ -130,11 +130,6 @@ fun InventarioLogsScreen() {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Text(
-                            "Producto ID: ${log.producto_id}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Row(

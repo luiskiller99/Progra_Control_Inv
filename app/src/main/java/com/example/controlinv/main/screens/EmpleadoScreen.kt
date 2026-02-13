@@ -61,6 +61,8 @@ private fun resolverImagenProducto(item: Inventario): String? {
 @Composable
 private fun CarritoResumen(
     carrito: List<ItemCarrito>,
+    comentario: String,
+    onComentarioChange: (String) -> Unit,
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
@@ -77,6 +79,17 @@ private fun CarritoResumen(
                 .padding(12.dp)
         ) {
             Text("Carrito (${carrito.size})", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = comentario,
+                onValueChange = onComentarioChange,
+                label = { Text("Comentario del pedido") },
+                placeholder = { Text("Ej: Pedido extraordinario / Pedido de Xavier") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 2
+            )
+
             Spacer(Modifier.height(8.dp))
 
             LazyColumn(
@@ -198,6 +211,7 @@ fun PedidoEmpleadoScreen(
 ) {
     val pedidoViewModel: PedidoViewModel = viewModel(factory = PedidoViewModelFactory(supabase))
     var textoBusqueda by remember { mutableStateOf("") }
+    var comentarioPedido by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -222,6 +236,8 @@ fun PedidoEmpleadoScreen(
         bottomBar = {
             CarritoResumen(
                 carrito = pedidoViewModel.carrito,
+                comentario = comentarioPedido,
+                onComentarioChange = { comentarioPedido = it },
                 onSumar = { id: String ->
                     val item = pedidoViewModel.carrito.find { it.producto.id == id }
                     if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
@@ -238,7 +254,11 @@ fun PedidoEmpleadoScreen(
                     pedidoViewModel.confirmarPedido(
                         userId = userId,
                         email = emailUsuario,
-                        onOk = { scope.launch { snackbarHostState.showSnackbar("Pedido creado correctamente") } },
+                        comentario = comentarioPedido,
+                        onOk = {
+                            comentarioPedido = ""
+                            scope.launch { snackbarHostState.showSnackbar("Pedido creado correctamente") }
+                        },
                         onError = { error -> scope.launch { snackbarHostState.showSnackbar(error) } }
                     )
                 }
