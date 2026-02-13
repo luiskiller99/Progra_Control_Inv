@@ -185,6 +185,8 @@ fun ProductoCard(
                 modifier = Modifier
                     .size(56.dp)
                     .padding(end = 8.dp)
+                    .size(64.dp)
+                    .padding(end = 10.dp)
             )
 
             Column(
@@ -193,6 +195,7 @@ fun ProductoCard(
                 Text(
                     text = item.codigo ?: "",
                     style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -201,6 +204,7 @@ fun ProductoCard(
                     text = item.descripcion ?: "",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -235,6 +239,27 @@ fun ProductoCard(
                     modifier = Modifier.height(40.dp)
                 ) {
                     Text("Agregar", style = MaterialTheme.typography.labelMedium)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = cantidad,
+                        onValueChange = { cantidad = it },
+                        modifier = Modifier.width(64.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Button(onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) }) {
+                        Text("Agregar", style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
