@@ -172,16 +172,19 @@ fun ProductoCard(
 
     Card(
         modifier = Modifier
-            .padding(8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
             .fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
+                    .size(56.dp)
+                    .padding(end = 8.dp)
                     .size(64.dp)
                     .padding(end = 10.dp)
             )
@@ -191,6 +194,7 @@ fun ProductoCard(
             ) {
                 Text(
                     text = item.codigo ?: "",
+                    style = MaterialTheme.typography.labelSmall,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -199,6 +203,7 @@ fun ProductoCard(
                 Text(
                     text = item.descripcion ?: "",
                     style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -207,6 +212,33 @@ fun ProductoCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = cantidad,
+                    onValueChange = { cantidad = it },
+                    modifier = Modifier
+                        .width(56.dp)
+                        .height(48.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall
+                )
+
+                Spacer(Modifier.width(6.dp))
+
+                Button(
+                    onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) },
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Text("Agregar", style = MaterialTheme.typography.labelMedium)
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
