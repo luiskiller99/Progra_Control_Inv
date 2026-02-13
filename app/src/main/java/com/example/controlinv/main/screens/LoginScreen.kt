@@ -57,6 +57,14 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedLabelColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier.padding(vertical = 8.dp)
         )
 
         OutlinedTextField(
@@ -68,6 +76,14 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedLabelColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier.padding(vertical = 8.dp)
         )
 
         Button(
