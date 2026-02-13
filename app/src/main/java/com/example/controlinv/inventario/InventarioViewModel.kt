@@ -1,6 +1,7 @@
 package com.example.controlinv.inventario
 
 import android.util.Log
+import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_KEY 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

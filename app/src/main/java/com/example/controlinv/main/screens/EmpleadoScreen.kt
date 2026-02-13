@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -181,35 +182,51 @@ fun ProductoCard(
                 model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
-                    .size(80.dp)
-                    .padding(end = 12.dp)
+                    .size(64.dp)
+                    .padding(end = 10.dp)
             )
 
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(item.codigo ?: "", style = MaterialTheme.typography.titleMedium)
-                Text(item.descripcion ?: "", maxLines = 2)
-                Text("Stock: ${item.cantidad ?: 0}")
+                Text(
+                    text = item.codigo ?: "",
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = item.descripcion ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Stock: ${item.cantidad ?: 0}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 6.dp)
                 ) {
                     OutlinedTextField(
                         value = cantidad,
                         onValueChange = { cantidad = it },
-                        modifier = Modifier.width(80.dp),
+                        modifier = Modifier.width(64.dp),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = KeyboardType.Number
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(8.dp))
 
                     Button(onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) }) {
-                        Text("Agregar")
+                        Text("Agregar", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
