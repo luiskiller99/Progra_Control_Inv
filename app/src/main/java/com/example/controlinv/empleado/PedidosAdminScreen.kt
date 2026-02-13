@@ -143,6 +143,12 @@ fun PedidoItem(
                 "Estado: ${pedido.estado}",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (pedido.comentario.isNotBlank()) {
+                Text(
+                    "Comentario: ${pedido.comentario}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
