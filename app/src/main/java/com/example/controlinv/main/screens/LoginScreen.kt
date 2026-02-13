@@ -43,11 +43,11 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-
         Text(
             text = "Iniciar sesión",
             style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp)
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
         OutlinedTextField(
@@ -57,7 +57,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             colors = textFieldColors,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(vertical = 6.dp)
         )
 
         OutlinedTextField(
@@ -68,14 +68,14 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             colors = textFieldColors,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(vertical = 6.dp)
         )
 
         Button(
             onClick = { onLogin(email, pass) },
             modifier = Modifier
+                .padding(top = 14.dp)
                 .fillMaxWidth()
-                .padding(top = 16.dp)
         ) {
             Text("Ingresar")
         }

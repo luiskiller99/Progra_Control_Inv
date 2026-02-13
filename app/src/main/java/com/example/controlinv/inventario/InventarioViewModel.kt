@@ -90,11 +90,30 @@ class InventarioViewModel : ViewModel() {
             }
         }
     }
-    fun eliminar(id: String) {
+    fun eliminar(
+        id: String,
+        onOk: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            eliminarInventario(id)
-            inventarioCompleto = inventarioCompleto.filter { it.id != id }
-            inventario = inventario.filter { it.id != id }
+            try {
+                val imagenUrl = inventarioCompleto.find { it.id == id }?.imagen
+
+                eliminarInventario(id)
+                eliminarImagenProductoStorage(imagenUrl)
+
+                inventarioCompleto = inventarioCompleto.filter { it.id != id }
+                inventario = inventario.filter { it.id != id }
+                onOk()
+            } catch (e: Exception) {
+                Log.e("INVENTARIO", "Error eliminando inventario", e)
+                val mensaje = when {
+                    (e.message ?: "").contains("foreign key", ignoreCase = true) ->
+                        "No se puede eliminar: el producto está relacionado con pedidos."
+                    else -> "No se pudo eliminar el producto: ${e.message ?: "error desconocido"}"
+                }
+                onError(mensaje)
+            }
         }
     }
     fun guardarFila(itemNuevo: Inventario) {
@@ -139,6 +158,41 @@ class InventarioViewModel : ViewModel() {
         }
     }
 
+    private suspend fun eliminarImagenProductoStorage(imagenUrl: String?) {
+        if (imagenUrl.isNullOrBlank()) return
+
+        val basePrefix = "$SUPABASE_URL/storage/v1/object/public/productos/"
+        val path = when {
+            imagenUrl.startsWith(basePrefix) -> imagenUrl.removePrefix(basePrefix)
+            imagenUrl.contains("/storage/v1/object/public/productos/") ->
+                imagenUrl.substringAfter("/storage/v1/object/public/productos/")
+            else -> imagenUrl.removePrefix("/")
+                .removePrefix("productos/")
+                .removePrefix("object/public/productos/")
+        }.substringBefore("?")
+
+        if (path.isBlank()) return
+
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = supabase.auth.currentSessionOrNull()?.accessToken ?: return@runCatching
+                val endpoint = "$SUPABASE_URL/storage/v1/object/productos/$path"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    setRequestProperty("apikey", SUPABASE_KEY)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val code = connection.responseCode
+                if (code !in 200..299 && code != 404) {
+                    val body = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                    Log.w("INVENTARIO_UPLOAD", "No se pudo borrar imagen storage ($code): ${body ?: "sin detalle"}")
+                }
+            }.onFailure {
+                Log.w("INVENTARIO_UPLOAD", "Error borrando imagen storage", it)
+            }
+        }
+    }
+
     private suspend fun subirImagenProducto(
         imagenBytes: ByteArray,
         extension: String
@@ -161,6 +215,7 @@ class InventarioViewModel : ViewModel() {
             if (authToken.isNullOrBlank()) {
                 ultimoErrorSubida = "No hay sesión autenticada para subir imagen"
                 Log.e("INVENTARIO_UPLOAD", ultimoErrorSubida ?: "")
+                return null
             }
 
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
