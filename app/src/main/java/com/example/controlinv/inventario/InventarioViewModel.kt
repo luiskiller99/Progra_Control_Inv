@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.controlinv.empleado.DetallePedido
 import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
@@ -97,6 +98,19 @@ class InventarioViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
+                val relacionesPedidos = supabase
+                    .from("pedido_detalle")
+                    .select {
+                        filter { eq("producto_id", id) }
+                    }
+                    .decodeList<DetallePedido>()
+                    .size
+
+                if (relacionesPedidos > 0) {
+                    onError("No se puede eliminar: el producto está en $relacionesPedidos pedido(s).")
+                    return@launch
+                }
+
                 val imagenUrl = inventarioCompleto.find { it.id == id }?.imagen
 
                 eliminarInventario(id)

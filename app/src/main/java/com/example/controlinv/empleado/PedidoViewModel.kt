@@ -48,12 +48,14 @@ class PedidoViewModel(
     ) {
         viewModelScope.launch {
             try {
+                // 1) Validamos que cada item tenga producto_id y cantidad > 0
                 val itemsValidos = carrito.filter { it.producto.id != null && it.cantidad > 0 }
                 if (itemsValidos.isEmpty()) {
                     onError("El carrito no tiene items válidos")
                     return@launch
                 }
 
+                // 2) Armamos el JSON que espera la función RPC crear_pedido en Supabase
                 val itemsJson = JsonArray(
                     itemsValidos.map {
                         JsonObject(
@@ -65,6 +67,7 @@ class PedidoViewModel(
                     }
                 )
 
+                // 3) Ejecutamos la RPC: ella valida stock, reserva inventario y crea detalle
                 supabase.postgrest.rpc(
                     function = "crear_pedido",
                     parameters = JsonObject(
@@ -76,6 +79,7 @@ class PedidoViewModel(
                     )
                 )
 
+                // 4) Refrescamos catálogo para mostrar stock actualizado
                 recargarInventario()
                 Log.i("PEDIDO", "Pedido creado correctamente")
                 carrito.clear()
@@ -83,6 +87,7 @@ class PedidoViewModel(
             } catch (e: Exception) {
                 Log.e("PEDIDO", "Error creando pedido", e)
                 val mensajeOriginal = e.message ?: ""
+                // Caso conocido: el pedido sí se crea, pero falla parseo del UUID retornado
                 val esErrorParseoRetornoUuid =
                     mensajeOriginal.contains("Unexpected JSON token", ignoreCase = true) &&
                         mensajeOriginal.contains("JSON input", ignoreCase = true)
