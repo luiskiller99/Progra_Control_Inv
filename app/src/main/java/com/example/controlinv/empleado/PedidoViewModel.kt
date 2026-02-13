@@ -127,6 +127,12 @@ class PedidoViewModel(
         }
     }
 
+    fun refrescarInventario() {
+        viewModelScope.launch {
+            recargarInventario()
+        }
+    }
+
     private fun cargarInventario() {
         viewModelScope.launch {
             recargarInventario()
