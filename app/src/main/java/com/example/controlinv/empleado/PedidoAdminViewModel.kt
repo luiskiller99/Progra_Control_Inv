@@ -6,8 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.supabase
+import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -22,6 +22,7 @@ data class PedidoUI(
     val empleadoEmail: String,
     val fecha: String,
     val estado: String,
+    val comentario: String,
     val productos: List<String>
 )
 
@@ -31,17 +32,21 @@ data class Pedido(
     val fecha: String,
     val estado: String,
     val empleado_id: String,
-    val empleado_email: String? = null
+    val empleado_email: String? = null,
+    val comentario: String? = null
 )
 
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
+
     var cargando by mutableStateOf(false)
         private set
+
     init {
         cargarPedidos()
     }
+
     fun cargarPedidos() {
         viewModelScope.launch {
             try {
@@ -65,7 +70,6 @@ class PedidoAdminViewModel : ViewModel() {
                     .associateBy { it.id }
 
                 val pedidosUI = pedidos.map { pedido ->
-
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
@@ -80,31 +84,34 @@ class PedidoAdminViewModel : ViewModel() {
                         empleadoEmail = pedido.empleado_email ?: "Desconocido",
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
+                        comentario = pedido.comentario ?: "",
                         productos = productos
                     )
                 }
 
                 _listaPedidos.value = pedidosUI
-                cargando = false
-
             } catch (e: Exception) {
-                cargando = false
                 Log.e("ADMIN_PEDIDOS", "Error cargando pedidos", e)
+            } finally {
+                cargando = false
             }
         }
     }
+
     fun aceptarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
                 supabase.postgrest.rpc(
-                "aceptar_pedido",
-                mapOf("p_pedido_id" to pedidoId)
+                    "aceptar_pedido",
+                    mapOf("p_pedido_id" to pedidoId)
                 )
-                cargarPedidos()} catch (e: Exception) {
-                    Log.e("ADMIN", "Error aceptando pedido", e)
-                }
+                cargarPedidos()
+            } catch (e: Exception) {
+                Log.e("ADMIN", "Error aceptando pedido", e)
+            }
         }
     }
+
     fun rechazarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
@@ -113,11 +120,9 @@ class PedidoAdminViewModel : ViewModel() {
                     mapOf("p_pedido_id" to pedidoId)
                 )
                 cargarPedidos()
-
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error rechazando pedido", e)
             }
         }
     }
 }
-
