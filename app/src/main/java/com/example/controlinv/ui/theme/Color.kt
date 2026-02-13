@@ -9,6 +9,7 @@ val Pink80 = Color(0xFFEFB8C8)
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
+
 // 🔵 Azules
 val AceroBlue = Color(0xFF0284C7)
 val AceroBlueLight = Color(0xFF38BDF8)
@@ -26,12 +27,13 @@ val Slate100 = Color(0xFFF1F5F9)
 
 // 🧱 Superficies
 val SurfaceCard = Color(0xFFF8FAFC)
-val SurfaceCardDark = Color(0xFF1E293B)
+val SurfaceCardDark = Color(0xFF121212)
 
 // 🔴 Errores
 val ErrorRed = Color(0xFFDC2626)
 
-val SurfaceDark = Color(0xFF111827)
-val BackgroundDark = Color(0xFF0B1220)
+// Base de tema para mejorar contraste en modo oscuro (incluyendo OLED/negro profundo)
+val SurfaceDark = Color(0xFF0D0D0D)
+val BackgroundDark = Color(0xFF000000)
 val SurfaceLight = Color(0xFFFFFFFF)
 val BackgroundLight = Color(0xFFF8FAFC)
