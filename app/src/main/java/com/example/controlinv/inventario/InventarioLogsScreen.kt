@@ -47,8 +47,8 @@ private fun formatearItemLog(raw: String): String {
         val obj = Json.parseToJsonElement(raw).jsonObject
         buildString {
             obj.entries.forEach { (key, value) ->
+                if (key == "id") return@forEach
                 val nombre = when (key) {
-                    "id" -> "ID"
                     "codigo" -> "Código"
                     "descripcion" -> "Descripción"
                     "cantidad" -> "Cantidad"
