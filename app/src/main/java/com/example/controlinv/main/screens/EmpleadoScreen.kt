@@ -86,14 +86,14 @@ fun PedidoEmpleadoScreen(
         bottomBar = {
             CarritoResumen(
                 carrito = pedidoViewModel.carrito,
-                onSumar = { id ->
+                onSumar = { id: String ->
                     val item = pedidoViewModel.carrito.find { it.producto.id == id }
                     if (item != null) {
                         pedidoViewModel.agregarAlCarrito(item.producto, 1)
                     }
                 },
-                onRestar = { id -> pedidoViewModel.restarDelCarrito(id) },
-                onEliminar = { id -> pedidoViewModel.quitarDelCarrito(id) },
+                onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
+                onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
                 onConfirmar = {
                     if (userId == null) {
                         scope.launch {
@@ -155,7 +155,7 @@ fun PedidoEmpleadoScreen(
                 items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
                     ProductoCard(
                         item = item,
-                        onAgregar = { cant -> pedidoViewModel.agregarAlCarrito(item, cant) }
+                        onAgregar = { cant: Int -> pedidoViewModel.agregarAlCarrito(item, cant) }
                     )
                 }
             }
