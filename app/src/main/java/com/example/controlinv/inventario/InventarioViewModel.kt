@@ -1,7 +1,7 @@
 package com.example.controlinv.inventario
 
 import android.util.Log
-import com.example.controlinv.auth.SUPABASE_KEY
+import com.example.controlinv.auth.SUPABASE_KEY 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -164,6 +164,7 @@ class InventarioViewModel : ViewModel() {
             if (authToken.isNullOrBlank()) {
                 ultimoErrorSubida = "No hay sesión autenticada para subir imagen"
                 Log.e("INVENTARIO_UPLOAD", ultimoErrorSubida ?: "")
+                return null
                 //return null
             }
 
