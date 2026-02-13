@@ -85,7 +85,6 @@ private fun CarritoResumen(
                 value = comentario,
                 onValueChange = onComentarioChange,
                 label = { Text("Comentario del pedido") },
-                placeholder = { Text("Ej: Pedido extraordinario / Pedido de Xavier") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 2
             )

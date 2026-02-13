@@ -15,6 +15,7 @@ import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -56,6 +57,19 @@ class PedidoViewModel(
                     return@launch
                 }
 
+                // Validación local adicional: no enviar pedidos que dejarían stock negativo
+                val inventarioPorId = inventarioOriginal.associateBy { it.id }
+                val itemSinStock = itemsValidos.firstOrNull { item ->
+                    val stockActual = inventarioPorId[item.producto.id]?.cantidad ?: 0
+                    item.cantidad > stockActual
+                }
+                if (itemSinStock != null) {
+                    val nombre = itemSinStock.producto.descripcion ?: "producto"
+                    onError("Stock insuficiente para $nombre")
+                    recargarInventario()
+                    return@launch
+                }
+
                 // 2) Armamos el JSON que espera la función RPC crear_pedido en Supabase
                 val itemsJson = JsonArray(
                     itemsValidos.map {
@@ -75,7 +89,7 @@ class PedidoViewModel(
                         mapOf(
                             "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
-                            "p_comentario" to JsonPrimitive(comentario),
+                            "p_comentario" to if (comentario.isBlank()) JsonNull else JsonPrimitive(comentario),
                             "p_items" to itemsJson
                         )
                     )
