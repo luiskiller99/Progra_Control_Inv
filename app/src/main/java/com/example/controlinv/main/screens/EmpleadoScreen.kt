@@ -1,44 +1,18 @@
 package com.example.controlinv.main.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -52,26 +26,169 @@ import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 
+private fun resolverImagenProducto(item: Inventario): String? {
+    val candidato = item.imagen?.takeIf { it.isNotBlank() }
+        ?: item.extra1?.takeIf { it.isNotBlank() }
+        ?: return null
+
+    if (candidato.startsWith("http")) return candidato
+
+    val pathLimpio = candidato
+        .removePrefix("/")
+        .removePrefix("productos/")
+        .removePrefix("object/public/productos/")
+
+    return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
+}
+
+@Composable
+private fun ProductoCard(
+    item: Inventario,
+    onAgregar: (Int) -> Unit
+) {
+    var cantidad by remember { mutableStateOf("1") }
+
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
+                contentDescription = item.descripcion,
+                modifier = Modifier.size(64.dp)
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.codigo.orEmpty(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = item.descripcion.orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Stock: ${item.cantidad ?: 0}",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            OutlinedTextField(
+                value = cantidad,
+                onValueChange = { cantidad = it },
+                modifier = Modifier.width(60.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                singleLine = true
+            )
+
+            Spacer(Modifier.width(6.dp))
+
+            Button(
+                onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) }
+            ) {
+                Text("Agregar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CarritoResumen(
+    carrito: List<ItemCarrito>,
+    onSumar: (String) -> Unit,
+    onRestar: (String) -> Unit,
+    onEliminar: (String) -> Unit,
+    onConfirmar: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+
+            Text("Carrito (${carrito.size})")
+
+            Spacer(Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 200.dp)
+            ) {
+                items(carrito, key = { it.producto.id ?: "sin-id" }) { item ->
+                    val productId = item.producto.id ?: return@items
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            item.producto.descripcion.orEmpty(),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        IconButton(onClick = { onRestar(productId) }) {
+                            Text("-")
+                        }
+
+                        Text(item.cantidad.toString())
+
+                        IconButton(onClick = { onSumar(productId) }) {
+                            Text("+")
+                        }
+
+                        IconButton(onClick = { onEliminar(productId) }) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        }
+                    }
+                    Divider()
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = onConfirmar,
+                enabled = carrito.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar pedido")
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
     onLogout: () -> Unit
 ) {
-    val pedidoViewModel: PedidoViewModel = viewModel(
-        factory = PedidoViewModelFactory(supabase)
-    )
+    val pedidoViewModel: PedidoViewModel =
+        viewModel(factory = PedidoViewModelFactory(supabase))
+
     var textoBusqueda by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    if (pedidoViewModel.cargando) {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-    }
-
     val userId = supabase.auth.currentUserOrNull()?.id
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Inventario") },
@@ -86,13 +203,12 @@ fun PedidoEmpleadoScreen(
             CarritoResumen(
                 carrito = pedidoViewModel.carrito,
                 onSumar = { id ->
-                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                    if (item != null) {
-                        pedidoViewModel.agregarAlCarrito(item.producto, 1)
+                    pedidoViewModel.carrito.find { it.producto.id == id }?.let {
+                        pedidoViewModel.agregarAlCarrito(it.producto, 1)
                     }
                 },
-                onRestar = { id -> pedidoViewModel.restarDelCarrito(id) },
-                onEliminar = { id -> pedidoViewModel.quitarDelCarrito(id) },
+                onRestar = { pedidoViewModel.restarDelCarrito(it) },
+                onEliminar = { pedidoViewModel.quitarDelCarrito(it) },
                 onConfirmar = {
                     if (userId == null) {
                         scope.launch {
@@ -101,12 +217,12 @@ fun PedidoEmpleadoScreen(
                         return@CarritoResumen
                     }
 
-                    val emailUsuario =
+                    val email =
                         supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
 
                     pedidoViewModel.confirmarPedido(
                         userId = userId,
-                        email = emailUsuario,
+                        email = email,
                         onOk = {
                             scope.launch {
                                 snackbarHostState.showSnackbar("Pedido creado correctamente")
@@ -122,171 +238,35 @@ fun PedidoEmpleadoScreen(
             )
         }
     ) { padding ->
+
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            Text(
-                "Catálogo de productos",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
-            )
 
             OutlinedTextField(
                 value = textoBusqueda,
-                onValueChange = { texto ->
-                    textoBusqueda = texto
-                    pedidoViewModel.filtrarInventario(texto)
+                onValueChange = {
+                    textoBusqueda = it
+                    pedidoViewModel.filtrarInventario(it)
                 },
                 label = { Text("Buscar producto") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                }
+                leadingIcon = { Icon(Icons.Default.Search, null) }
             )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
                 items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
                     ProductoCard(
                         item = item,
-                        onAgregar = { cant -> pedidoViewModel.agregarAlCarrito(item, cant) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProductoCard(
-    item: Inventario,
-    onAgregar: (Int) -> Unit
-) {
-    var cantidad by remember { mutableStateOf("1") }
-
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            AsyncImage(
-                model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
-                contentDescription = item.descripcion,
-                modifier = Modifier
-                    .size(80.dp)
-                    .padding(end = 12.dp)
-            )
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(item.codigo ?: "", style = MaterialTheme.typography.titleMedium)
-                Text(item.descripcion ?: "", maxLines = 2)
-                Text("Stock: ${item.cantidad ?: 0}")
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = cantidad,
-                        onValueChange = { cantidad = it },
-                        modifier = Modifier.width(80.dp),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        singleLine = true
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Button(onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) }) {
-                        Text("Agregar")
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun resolverImagenProducto(item: Inventario): String? {
-    val candidato = item.imagen?.takeIf { it.isNotBlank() }
-        ?: item.extra1?.takeIf { it.isNotBlank() }
-        ?: return null
-
-    if (candidato.startsWith("http://") || candidato.startsWith("https://")) {
-        return candidato
-    }
-
-    val pathLimpio = candidato.removePrefix("/")
-        .removePrefix("productos/")
-        .removePrefix("object/public/productos/")
-
-    return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
-}
-
-@Composable
-fun CarritoResumen(
-    carrito: List<ItemCarrito>,
-    onSumar: (String) -> Unit,
-    onRestar: (String) -> Unit,
-    onEliminar: (String) -> Unit,
-    onConfirmar: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Text("Carrito (${carrito.size})", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 180.dp)
-            ) {
-                items(carrito, key = { it.producto.id ?: it.producto.codigo ?: "sin-id" }) { item ->
-                    val productId = item.producto.id ?: return@items
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("${item.producto.descripcion}", modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onRestar(productId) }) { Text("➖") }
-                        Text("${item.cantidad}")
-                        IconButton(onClick = { onSumar(productId) }) { Text("➕") }
-                        IconButton(onClick = { onEliminar(productId) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                        onAgregar = { cant ->
+                            pedidoViewModel.agregarAlCarrito(item, cant)
                         }
-                    }
-                    Divider()
+                    )
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = onConfirmar,
-                enabled = carrito.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Confirmar pedido")
             }
         }
     }

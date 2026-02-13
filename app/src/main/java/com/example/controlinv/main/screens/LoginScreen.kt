@@ -3,6 +3,7 @@ package com.example.controlinv.main.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -20,27 +21,43 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
+
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedContainerColor = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+        cursorColor = MaterialTheme.colorScheme.primary
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
+
+        Text(
+            text = "Iniciar sesión",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Usuario") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                focusedLabelColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-                cursorColor = MaterialTheme.colorScheme.primary
-            ),
-            modifier = Modifier.padding(vertical = 8.dp)
+            colors = textFieldColors,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         )
 
         OutlinedTextField(
@@ -48,19 +65,17 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             onValueChange = { pass = it },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                focusedLabelColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-                cursorColor = MaterialTheme.colorScheme.primary
-            ),
-            modifier = Modifier.padding(vertical = 8.dp)
+            colors = textFieldColors,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         )
 
         Button(
             onClick = { onLogin(email, pass) },
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
         ) {
             Text("Ingresar")
         }
