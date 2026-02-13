@@ -20,7 +20,6 @@ import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
-
 class InventarioViewModel : ViewModel() {
     var cargando by mutableStateOf(false)
         private set
@@ -28,11 +27,9 @@ class InventarioViewModel : ViewModel() {
     var inventario by mutableStateOf<List<Inventario>>(emptyList())
         private set
     private var ultimoErrorSubida: String? = null
-
     init {
         cargarInventario()
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             cargando = true
@@ -269,7 +266,4 @@ suspend fun eliminarInventario(id: String) {
             }
         }
 
-}
-suspend fun logout() {
-    supabase.auth.signOut()
 }
