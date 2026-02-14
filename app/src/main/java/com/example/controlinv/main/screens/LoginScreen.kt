@@ -29,6 +29,7 @@ import com.example.controlinv.R
 
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
+
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     val scroll = rememberScrollState()
@@ -38,7 +39,6 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             .takeIf { it != 0 }
             ?: R.mipmap.ic_launcher
     }
-
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = MaterialTheme.colorScheme.onSurface,
         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -50,7 +50,6 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         cursorColor = MaterialTheme.colorScheme.primary
     )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
