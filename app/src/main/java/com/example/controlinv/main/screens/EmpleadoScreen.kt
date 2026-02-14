@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,6 +78,7 @@ private fun CarritoResumen(
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
+    onSetCantidad: (String, Int) -> Unit,
     onConfirmar: () -> Unit
 ) {
     Card(
@@ -110,16 +112,51 @@ private fun CarritoResumen(
             ) {
                 items(carrito, key = { it.producto.id ?: it.producto.codigo ?: "sin-id" }) { item ->
                     val productId = item.producto.id ?: return@items
+                    var cantidadManual by remember(productId, item.cantidad) {
+                        mutableStateOf(item.cantidad.toString())
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(item.producto.descripcion.orEmpty(), modifier = Modifier.weight(1f))
+                        Text(
+                            item.producto.descripcion.orEmpty(),
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         IconButton(onClick = { onRestar(productId) }) { Text("-") }
                         Text(item.cantidad.toString())
                         IconButton(onClick = { onSumar(productId) }) { Text("+") }
+
+                        OutlinedTextField(
+                            value = cantidadManual,
+                            onValueChange = { valor ->
+                                cantidadManual = valor.filter { it.isDigit() }.take(3)
+                            },
+                            modifier = Modifier
+                                .width(56.dp)
+                                .height(48.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            textStyle = MaterialTheme.typography.bodySmall
+                        )
+
+                        Spacer(Modifier.width(4.dp))
+
+                        Button(
+                            onClick = {
+                                val nuevaCantidad = cantidadManual.toIntOrNull() ?: item.cantidad
+                                onSetCantidad(productId, nuevaCantidad)
+                            },
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Text("OK", style = MaterialTheme.typography.labelSmall)
+                        }
+
                         IconButton(onClick = { onEliminar(productId) }) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                         }
@@ -144,10 +181,8 @@ private fun CarritoResumen(
 @Composable
 private fun ProductoCard(
     item: Inventario,
-    onAgregar: (Int) -> Unit
+    onAgregar: () -> Unit
 ) {
-    var cantidad by remember { mutableStateOf("1") }
-
     Card(
         modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 6.dp)
@@ -188,28 +223,11 @@ private fun ProductoCard(
 
             Spacer(Modifier.width(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = { cantidad = it },
-                    modifier = Modifier
-                         .width(62.dp)
-                        .height(48.dp),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                Button(
-                    onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) },
-                    modifier = Modifier.height(42.dp)
-                ) {
-                    Text(text = "Agregar", style = MaterialTheme.typography.labelMedium)
-                }
+            Button(
+                onClick = onAgregar,
+                modifier = Modifier.height(42.dp)
+            ) {
+                Text(text = "Agregar", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -259,6 +277,16 @@ fun PedidoEmpleadoScreen(
                 },
                 onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
                 onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
+                onSetCantidad = { id: String, nuevaCantidad: Int ->
+                    val item = pedidoViewModel.carrito.find { it.producto.id == id } ?: return@CarritoResumen
+                    when {
+                        nuevaCantidad <= 0 -> pedidoViewModel.quitarDelCarrito(id)
+                        nuevaCantidad > item.cantidad -> pedidoViewModel.agregarAlCarrito(item.producto, nuevaCantidad - item.cantidad)
+                        nuevaCantidad < item.cantidad -> repeat(item.cantidad - nuevaCantidad) {
+                            pedidoViewModel.restarDelCarrito(id)
+                        }
+                    }
+                },
                 onConfirmar = {
                     if (userId == null) {
                         scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
@@ -308,7 +336,7 @@ fun PedidoEmpleadoScreen(
                 items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
                     ProductoCard(
                         item = item,
-                        onAgregar = { cant: Int -> pedidoViewModel.agregarAlCarrito(item, cant) }
+                        onAgregar = { pedidoViewModel.agregarAlCarrito(item, 1) }
                     )
                 }
             }
