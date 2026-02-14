@@ -18,6 +18,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.text.Normalizer
+
 
 
 data class ItemCarrito(
@@ -188,13 +190,27 @@ class PedidoViewModel(
     }
 
     fun filtrarInventario(texto: String) {
-        if (texto.isBlank()) {
+        val consulta = normalizarTexto(texto)
+        if (consulta.isBlank()) {
             inventario = inventarioOriginal
-        } else {
-            inventario = inventarioOriginal.filter {
-                it.descripcion?.contains(texto, ignoreCase = true) == true ||
-                    it.clasificacion?.contains(texto, ignoreCase = true) == true
-            }
+            return
         }
+
+        val terminos = consulta.split(" ").filter { it.isNotBlank() }
+
+        inventario = inventarioOriginal.filter { item ->
+            val descripcion = normalizarTexto(item.descripcion)
+            val clasificacion = normalizarTexto(item.clasificacion)
+            val baseBusqueda = "$descripcion $clasificacion"
+
+            terminos.all { termino -> baseBusqueda.contains(termino) }
+        }
+    }
+
+    private fun normalizarTexto(valor: String?): String {
+        if (valor.isNullOrBlank()) return ""
+        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
+            .replace("\p{M}+".toRegex(), "")
+            .trim()
     }
 }

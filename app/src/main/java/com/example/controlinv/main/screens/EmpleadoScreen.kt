@@ -170,7 +170,13 @@ private fun ProductoCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.codigo.orEmpty(),
+                    text = buildString {
+                        append(item.codigo.orEmpty())
+                        if (!item.clasificacion.isNullOrBlank()) {
+                            append("  •  ")
+                            append(item.clasificacion)
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
