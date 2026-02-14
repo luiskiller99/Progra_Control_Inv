@@ -1,6 +1,16 @@
 package com.example.controlinv.main.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -71,7 +81,8 @@ private fun CarritoResumen(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
+             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(8.dp)
     ) {
         Column(
@@ -143,14 +154,14 @@ private fun ProductoCard(
             .fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
-                    .size(56.dp)
+                     .size(64.dp)
                     .padding(end = 8.dp)
             )
 
@@ -158,14 +169,14 @@ private fun ProductoCard(
                 Text(
                     text = item.codigo.orEmpty(),
                     style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = item.descripcion.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -182,7 +193,7 @@ private fun ProductoCard(
                     value = cantidad,
                     onValueChange = { cantidad = it },
                     modifier = Modifier
-                        .width(56.dp)
+                         .width(62.dp)
                         .height(48.dp),
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Number
@@ -195,7 +206,7 @@ private fun ProductoCard(
 
                 Button(
                     onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) },
-                    modifier = Modifier.height(40.dp)
+                    modifier = Modifier.height(42.dp)
                 ) {
                     Text(text = "Agregar", style = MaterialTheme.typography.labelMedium)
                 }

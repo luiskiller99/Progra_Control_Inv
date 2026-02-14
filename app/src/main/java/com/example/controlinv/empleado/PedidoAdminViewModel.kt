@@ -69,7 +69,7 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<Inventario>()
                     .associateBy { it.id }
 
-                val pedidosUI = pedidos.map { pedido ->
+                val pedidosUI = pedidos.sortedByDescending { it.fecha }.map { pedido ->
                     val productos = detalles[pedido.id]
                         .orEmpty()
                         .map { det ->
