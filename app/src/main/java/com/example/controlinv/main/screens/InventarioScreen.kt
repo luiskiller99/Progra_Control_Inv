@@ -31,6 +31,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -132,7 +134,15 @@ fun InventarioScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.eliminar(eliminarId!!)
+                        viewModel.eliminar(
+                            id = eliminarId!!,
+                            onOk = {
+                                Toast.makeText(context, "Producto eliminado", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { mensaje ->
+                                Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                            }
+                        )
                         eliminarId = null
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -284,11 +294,11 @@ fun InventarioHeader() {
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Código", Modifier.width(colCodigo))
-        Text("Descripción", Modifier.width(colDescripcion))
-        Text("Cantidad", Modifier.width(colCantidad))
-        Text("Clase", Modifier.width(colClase))
-        Text("Acciones", Modifier.width(colAcciones))
+        Text("Código", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colCodigo))
+        Text("Descripción", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colDescripcion))
+        Text("Cantidad", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colCantidad))
+        Text("Clase", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colClase))
+        Text("Acciones", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colAcciones))
     }
     Divider()
 }
@@ -338,7 +348,7 @@ fun InventarioRow(
             }
 
             IconButton(onClick = onDiscard) {
-                Text("↩")
+                Text("↩", color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
@@ -361,6 +371,8 @@ fun CampoTabla(
             value = valor,
             onValueChange = onChange,
             singleLine = true,
+            textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth()

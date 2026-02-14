@@ -131,6 +131,11 @@ fun PedidoItem(
                 pedido.empleadoEmail ?: "Empleado desconocido",
                 style = MaterialTheme.typography.titleMedium
             )
+            Text(
+                "Pedido #${pedido.id}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(Modifier.height(4.dp))
 
@@ -143,6 +148,12 @@ fun PedidoItem(
                 "Estado: ${pedido.estado}",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (pedido.comentario.isNotBlank()) {
+                Text(
+                    "Comentario: ${pedido.comentario}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
