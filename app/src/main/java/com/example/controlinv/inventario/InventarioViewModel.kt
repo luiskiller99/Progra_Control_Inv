@@ -229,7 +229,7 @@ class InventarioViewModel : ViewModel() {
             if (authToken.isNullOrBlank()) {
                 ultimoErrorSubida = "No hay sesión autenticada para subir imagen"
                 Log.e("INVENTARIO_UPLOAD", ultimoErrorSubida ?: "")
-                return null
+                //return null
             }
 
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
