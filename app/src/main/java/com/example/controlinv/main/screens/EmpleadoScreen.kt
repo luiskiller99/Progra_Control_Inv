@@ -1,6 +1,16 @@
 package com.example.controlinv.main.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -30,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -71,7 +80,8 @@ private fun CarritoResumen(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
+             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(8.dp)
     ) {
         Column(
@@ -105,7 +115,13 @@ private fun CarritoResumen(
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(item.producto.descripcion.orEmpty(), modifier = Modifier.weight(1f))
+                        Text(
+                            item.producto.descripcion.orEmpty(),
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         IconButton(onClick = { onRestar(productId) }) { Text("-") }
                         Text(item.cantidad.toString())
                         IconButton(onClick = { onSumar(productId) }) { Text("+") }
@@ -133,24 +149,22 @@ private fun CarritoResumen(
 @Composable
 private fun ProductoCard(
     item: Inventario,
-    onAgregar: (Int) -> Unit
+    onAgregar: () -> Unit
 ) {
-    var cantidad by remember { mutableStateOf("1") }
-
     Card(
         modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 6.dp)
             .fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
-                    .size(56.dp)
+                     .size(64.dp)
                     .padding(end = 8.dp)
             )
 
@@ -158,14 +172,14 @@ private fun ProductoCard(
                 Text(
                     text = item.codigo.orEmpty(),
                     style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = item.descripcion.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -177,28 +191,11 @@ private fun ProductoCard(
 
             Spacer(Modifier.width(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = { cantidad = it },
-                    modifier = Modifier
-                        .width(56.dp)
-                        .height(48.dp),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                Button(
-                    onClick = { onAgregar(cantidad.toIntOrNull() ?: 0) },
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text(text = "Agregar", style = MaterialTheme.typography.labelMedium)
-                }
+            Button(
+                onClick = onAgregar,
+                modifier = Modifier.height(42.dp)
+            ) {
+                Text(text = "Agregar", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -297,7 +294,7 @@ fun PedidoEmpleadoScreen(
                 items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
                     ProductoCard(
                         item = item,
-                        onAgregar = { cant: Int -> pedidoViewModel.agregarAlCarrito(item, cant) }
+                        onAgregar = { pedidoViewModel.agregarAlCarrito(item, 1) }
                     )
                 }
             }
