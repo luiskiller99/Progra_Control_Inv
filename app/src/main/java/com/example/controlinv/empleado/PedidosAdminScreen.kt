@@ -32,6 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+
+private fun idPedidoCorto(id: String?): String {
+    if (id.isNullOrBlank()) return "000000"
+    val soloDigitos = id.filter { it.isDigit() }
+    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
+    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
+    return hash6.toString().padStart(6, '0')
+}
+
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,
@@ -132,7 +141,7 @@ fun PedidoItem(
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                "Pedido #${pedido.id}",
+                "ID: ${idPedidoCorto(pedido.id)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

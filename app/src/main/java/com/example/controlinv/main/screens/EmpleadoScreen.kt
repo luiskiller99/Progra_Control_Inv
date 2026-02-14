@@ -40,8 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -78,7 +76,6 @@ private fun CarritoResumen(
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
-    onSetCantidad: (String, Int) -> Unit,
     onConfirmar: () -> Unit
 ) {
     Card(
@@ -112,10 +109,6 @@ private fun CarritoResumen(
             ) {
                 items(carrito, key = { it.producto.id ?: it.producto.codigo ?: "sin-id" }) { item ->
                     val productId = item.producto.id ?: return@items
-                    var cantidadManual by remember(productId, item.cantidad) {
-                        mutableStateOf(item.cantidad.toString())
-                    }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -126,37 +119,12 @@ private fun CarritoResumen(
                             item.producto.descripcion.orEmpty(),
                             modifier = Modifier.weight(1f),
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall
                         )
                         IconButton(onClick = { onRestar(productId) }) { Text("-") }
                         Text(item.cantidad.toString())
                         IconButton(onClick = { onSumar(productId) }) { Text("+") }
-
-                        OutlinedTextField(
-                            value = cantidadManual,
-                            onValueChange = { valor ->
-                                cantidadManual = valor.filter { it.isDigit() }.take(3)
-                            },
-                            modifier = Modifier
-                                .width(56.dp)
-                                .height(48.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            textStyle = MaterialTheme.typography.bodySmall
-                        )
-
-                        Spacer(Modifier.width(4.dp))
-
-                        Button(
-                            onClick = {
-                                val nuevaCantidad = cantidadManual.toIntOrNull() ?: item.cantidad
-                                onSetCantidad(productId, nuevaCantidad)
-                            },
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Text("OK", style = MaterialTheme.typography.labelSmall)
-                        }
-
                         IconButton(onClick = { onEliminar(productId) }) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                         }
@@ -210,7 +178,7 @@ private fun ProductoCard(
                 )
                 Text(
                     text = item.descripcion.orEmpty(),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -277,16 +245,6 @@ fun PedidoEmpleadoScreen(
                 },
                 onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
                 onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
-                onSetCantidad = { id: String, nuevaCantidad: Int ->
-                    val item = pedidoViewModel.carrito.find { it.producto.id == id } ?: return@CarritoResumen
-                    when {
-                        nuevaCantidad <= 0 -> pedidoViewModel.quitarDelCarrito(id)
-                        nuevaCantidad > item.cantidad -> pedidoViewModel.agregarAlCarrito(item.producto, nuevaCantidad - item.cantidad)
-                        nuevaCantidad < item.cantidad -> repeat(item.cantidad - nuevaCantidad) {
-                            pedidoViewModel.restarDelCarrito(id)
-                        }
-                    }
-                },
                 onConfirmar = {
                     if (userId == null) {
                         scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }

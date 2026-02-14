@@ -39,7 +39,6 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             .takeIf { it != 0 }
             ?: R.mipmap.ic_launcher
     }
-
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = MaterialTheme.colorScheme.onSurface,
         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
