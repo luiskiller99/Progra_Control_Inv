@@ -29,6 +29,7 @@ import com.example.controlinv.R
 
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
+
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     val scroll = rememberScrollState()
@@ -51,6 +52,17 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         cursorColor = MaterialTheme.colorScheme.primary
     )
 
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedContainerColor = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+        cursorColor = MaterialTheme.colorScheme.primary
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
