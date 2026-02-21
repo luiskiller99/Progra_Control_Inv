@@ -139,19 +139,16 @@ class PedidoViewModel(
             }
         }
     }
-
     fun refrescarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private suspend fun recargarInventario() {
         try {
             cargando = true
@@ -166,7 +163,6 @@ class PedidoViewModel(
             cargando = false
         }
     }
-
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
@@ -181,11 +177,9 @@ class PedidoViewModel(
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
-
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
-
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -199,8 +193,6 @@ class PedidoViewModel(
             }
         }
     }
-
-
     fun cargarMisPedidos(userId: String?) {
         if (userId.isNullOrBlank()) {
             misPedidos = emptyList()
@@ -234,7 +226,6 @@ class PedidoViewModel(
             }
         }
     }
-
     fun filtrarInventario(texto: String) {
         val consulta = normalizarTexto(texto)
         if (consulta.isBlank()) {
@@ -252,18 +243,11 @@ class PedidoViewModel(
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
     }
-
     private fun normalizarTexto(valor: String?): String {
         if (valor.isNullOrBlank()) return ""
         return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
+            .replace("\\p{M}+".toRegex(), "")
             .trim()
     }
 
-    private fun normalizarTexto(valor: String?): String {
-        if (valor.isNullOrBlank()) return ""
-        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
-            .trim()
-    }
 }

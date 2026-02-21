@@ -2,9 +2,11 @@ package com.example.controlinv.empleado
 
 import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.exoplayer.offline.Download
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,14 +56,11 @@ private fun idPedidoCorto(id: String?): String {
     val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
     return hash6.toString().padStart(6, '0')
 }
-
-
 private data class ProductoExportado(
     val codigo: String,
     val descripcion: String,
     val cantidad: String
 )
-
 private fun parseProducto(productoTexto: String): ProductoExportado {
     val regex = Regex("""(\d+)\s*x\s*\[(.*?)]\s*(.*)""")
     val match = regex.find(productoTexto.trim())
@@ -74,10 +74,9 @@ private fun parseProducto(productoTexto: String): ProductoExportado {
         ProductoExportado(codigo = "N/A", descripcion = productoTexto, cantidad = "")
     }
 }
-
 private fun escaparCsv(texto: String): String =
     "\"" + texto.replace("\"", "\"\"") + "\""
-
+@RequiresApi(Build.VERSION_CODES.Q)
 private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     if (pedidos.isEmpty()) {
         Toast.makeText(context, "No hay pedidos para exportar", Toast.LENGTH_SHORT).show()
@@ -140,21 +139,12 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
         Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
     }
 }
-
-
-private fun idPedidoCorto(id: String?): String {
-    if (id.isNullOrBlank()) return "000000"
-    val soloDigitos = id.filter { it.isDigit() }
-    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
-    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
-    return hash6.toString().padStart(6, '0')
-}
-
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,
     RECHAZADO
 }
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
@@ -237,7 +227,6 @@ fun PedidosAdminScreen(
     }
 
 }
-
 @Composable
 fun PedidoItem(
     pedido: PedidoUI,
