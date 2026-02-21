@@ -114,6 +114,21 @@ private fun MisPedidosDialog(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
                             }
+                            Text(
+                                "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            if (pedido.productos.isNotEmpty()) {
+                                pedido.productos.forEach { prod ->
+                                    Text(
+                                        "• ${prod.cantidad} x ${prod.descripcion}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+
                             if (pedido.comentario.isNotBlank()) {
                                 Text(
                                     "Comentario: ${pedido.comentario}",

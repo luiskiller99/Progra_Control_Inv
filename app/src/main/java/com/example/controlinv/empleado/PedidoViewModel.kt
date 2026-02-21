@@ -26,11 +26,17 @@ data class ItemCarrito(
     var cantidad: Int,
 )
 
+data class ProductoPedidoUI(
+    val descripcion: String,
+    val cantidad: Int
+)
+
 data class MiPedidoUI(
     val id: String,
     val fecha: String,
     val estado: String,
-    val comentario: String
+    val comentario: String,
+    val productos: List<ProductoPedidoUI>
 )
 
 class PedidoViewModel(
@@ -217,14 +223,38 @@ class PedidoViewModel(
                     }
                     .decodeList<Pedido>()
 
+                val detalles = supabase
+                    .from("pedido_detalle")
+                    .select()
+                    .decodeList<DetallePedido>()
+                    .groupBy { it.pedido_id }
+
+                val inventarioPorId = supabase
+                    .from("inventario")
+                    .select()
+                    .decodeList<Inventario>()
+                    .associateBy { it.id }
+
                 misPedidos = pedidos
                     .sortedByDescending { it.fecha }
-                    .map {
+                    .map { pedido ->
+                        val productos = detalles[pedido.id]
+                            .orEmpty()
+                            .map { det ->
+                                val descripcion = inventarioPorId[det.producto_id]?.descripcion
+                                    ?: "Producto ${det.producto_id.take(6)}"
+                                ProductoPedidoUI(
+                                    descripcion = descripcion,
+                                    cantidad = det.cantidad
+                                )
+                            }
+
                         MiPedidoUI(
-                            id = it.id,
-                            fecha = it.fecha,
-                            estado = it.estado,
-                            comentario = it.comentario.orEmpty()
+                            id = pedido.id,
+                            fecha = pedido.fecha,
+                            estado = pedido.estado,
+                            comentario = pedido.comentario.orEmpty(),
+                            productos = productos
                         )
                     }
             } catch (e: Exception) {
@@ -251,6 +281,13 @@ class PedidoViewModel(
 
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
+    }
+
+    private fun normalizarTexto(valor: String?): String {
+        if (valor.isNullOrBlank()) return ""
+        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
+            .replace("\p{M}+".toRegex(), "")
+            .trim()
     }
 
     private fun normalizarTexto(valor: String?): String {
