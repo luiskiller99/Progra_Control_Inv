@@ -141,6 +141,15 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     }
 }
 
+
+private fun idPedidoCorto(id: String?): String {
+    if (id.isNullOrBlank()) return "000000"
+    val soloDigitos = id.filter { it.isDigit() }
+    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
+    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
+    return hash6.toString().padStart(6, '0')
+}
+
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,

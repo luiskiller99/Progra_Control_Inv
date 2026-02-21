@@ -194,16 +194,6 @@ private fun CarritoResumen(
                     Divider()
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = onConfirmar,
-                enabled = carrito.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Confirmar pedido")
-            }
         }
     }
 }
