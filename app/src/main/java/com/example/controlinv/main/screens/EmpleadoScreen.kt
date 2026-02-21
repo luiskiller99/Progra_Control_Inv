@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
@@ -32,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,52 +84,53 @@ private fun idPedidoCorto(id: String): String {
 }
 
 @Composable
-private fun MisPedidosSection(
+private fun MisPedidosDialog(
     pedidos: List<MiPedidoUI>,
     cargando: Boolean,
-    onRecargar: () -> Unit
+    onRecargar: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Mis pedidos", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 IconButton(onClick = onRecargar) {
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar mis pedidos")
                 }
             }
-
+        },
+        text = {
             if (cargando) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else if (pedidos.isEmpty()) {
                 Text("Aún no tienes pedidos.", style = MaterialTheme.typography.bodySmall)
             } else {
-                pedidos.forEach { pedido ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    items(pedidos, key = { it.id }) { pedido ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (pedido.comentario.isNotBlank()) {
+                                Text(
+                                    "Comentario: ${pedido.comentario}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Divider(modifier = Modifier.padding(top = 4.dp))
+                        }
                     }
-                    if (pedido.comentario.isNotBlank()) {
-                        Text(
-                            "Comentario: ${pedido.comentario}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Divider(modifier = Modifier.padding(top = 4.dp))
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
-    }
+    )
 }
 
 @Composable
@@ -193,6 +196,16 @@ private fun CarritoResumen(
                     }
                     Divider()
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = onConfirmar,
+                enabled = carrito.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar pedido")
             }
         }
     }
@@ -267,7 +280,7 @@ fun PedidoEmpleadoScreen(
     val pedidoViewModel: PedidoViewModel = viewModel(factory = PedidoViewModelFactory(supabase))
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
-    var mostrarMisPedidos by remember { mutableStateOf(false) }
+    var mostrarMisPedidosDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -290,8 +303,8 @@ fun PedidoEmpleadoScreen(
                 title = { Text("Inventario") },
                 actions = {
                     IconButton(onClick = {
-                        mostrarMisPedidos = !mostrarMisPedidos
-                        if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
+                        mostrarMisPedidosDialog = true
+                        pedidoViewModel.cargarMisPedidos(userId)
                     }) {
                         Icon(Icons.Default.List, contentDescription = "Mis pedidos")
                     }
@@ -384,6 +397,15 @@ fun PedidoEmpleadoScreen(
                         onAgregar = { pedidoViewModel.agregarAlCarrito(item, 1) }
                     )
                 }
+            }
+
+            if (mostrarMisPedidosDialog) {
+                MisPedidosDialog(
+                    pedidos = pedidoViewModel.misPedidos,
+                    cargando = pedidoViewModel.cargandoMisPedidos,
+                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) },
+                    onDismiss = { mostrarMisPedidosDialog = false }
+                )
             }
         }
     }

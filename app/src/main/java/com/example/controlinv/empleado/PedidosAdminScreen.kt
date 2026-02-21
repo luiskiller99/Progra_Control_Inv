@@ -2,11 +2,9 @@ package com.example.controlinv.empleado
 
 import android.content.ContentValues
 import android.content.Context
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,10 +41,106 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.exoplayer.offline.Download
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+
+private fun idPedidoCorto(id: String?): String {
+    if (id.isNullOrBlank()) return "000000"
+    val soloDigitos = id.filter { it.isDigit() }
+    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
+    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
+    return hash6.toString().padStart(6, '0')
+}
+
+
+private data class ProductoExportado(
+    val codigo: String,
+    val descripcion: String,
+    val cantidad: String
+)
+
+private fun parseProducto(productoTexto: String): ProductoExportado {
+    val regex = Regex("""(\d+)\s*x\s*\[(.*?)]\s*(.*)""")
+    val match = regex.find(productoTexto.trim())
+    return if (match != null) {
+        ProductoExportado(
+            codigo = match.groupValues[2].ifBlank { "N/A" },
+            descripcion = match.groupValues[3].ifBlank { "Producto" },
+            cantidad = match.groupValues[1]
+        )
+    } else {
+        ProductoExportado(codigo = "N/A", descripcion = productoTexto, cantidad = "")
+    }
+}
+
+private fun escaparCsv(texto: String): String =
+    "\"" + texto.replace("\"", "\"\"") + "\""
+
+private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
+    val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+    if (pedidosAceptados.isEmpty()) {
+        Toast.makeText(context, "No hay pedidos aceptados para exportar", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val fecha = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val nombreArchivo = "pedidos_bodega_$fecha.csv"
+
+    val contenido = buildString {
+        appendLine("empleado,id_pedido,estado,codigo,descripcion,cantidad")
+        pedidosAceptados.forEach { pedido ->
+            val empleado = pedido.empleadoEmail
+            if (pedido.productos.isEmpty()) {
+                appendLine(
+                    listOf(
+                        escaparCsv(empleado),
+                        escaparCsv(idPedidoCorto(pedido.id)),
+                        escaparCsv(pedido.estado),
+                        escaparCsv(""),
+                        escaparCsv(""),
+                        escaparCsv("")
+                    ).joinToString(",")
+                )
+            } else {
+                pedido.productos.forEach { productoTexto ->
+                    val p = parseProducto(productoTexto)
+                    appendLine(
+                        listOf(
+                            escaparCsv(empleado),
+                            escaparCsv(idPedidoCorto(pedido.id)),
+                            escaparCsv(pedido.estado),
+                            escaparCsv(p.codigo),
+                            escaparCsv(p.descripcion),
+                            escaparCsv(p.cantidad)
+                        ).joinToString(",")
+                    )
+                }
+            }
+        }
+    }
+
+    runCatching {
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
+            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("No se pudo crear el archivo")
+
+        resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
+            writer?.write(contenido)
+        }
+    }.onSuccess {
+        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
+    }.onFailure {
+        Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
 
 
 private fun idPedidoCorto(id: String?): String {
@@ -171,47 +265,62 @@ fun PedidosAdminScreen(
                 Text("No hay pedidos")
             }
         } else {
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
-                    Text("Pendientes")
-                }
-                TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO}) {
-                    Text("Aceptados")
-                }
-                TextButton(onClick = { filtro = PedidoFiltro.RECHAZADO }) {
-                    Text("Rechazados")
-                }
-            }
-            LazyColumn(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
                     .fillMaxSize()
+                    .padding(horizontal = 16.dp)
             ) {
-                val pedidosFiltrados = when (filtro) {
-                    PedidoFiltro.ENVIADO -> pedidos.filter { it.estado == "ENVIADO" }
-                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado == "ACEPTADO" }
-                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado == "RECHAZADO" }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
+                        Text("Pendientes")
+                    }
+                    TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO}) {
+                        Text("Aceptados")
+                    }
+                    TextButton(onClick = { filtro = PedidoFiltro.RECHAZADO }) {
+                        Text("Rechazados")
+                    }
                 }
-                items(pedidosFiltrados, key = { it.id }) { pedido ->
-                    PedidoItem(
-                        pedido = pedido,
-                        mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
-                        onAceptar = {
-                            if (pedido.estado == "ENVIADO") {
-                                viewModel.aceptarPedido(pedido.id)
-                            }
-                        },
-                        onRechazar = {
-                            if (pedido.estado == "ENVIADO") {
-                                viewModel.rechazarPedido(pedido.id)
-                            }
+                val pedidosFiltrados = when (filtro) {
+                    PedidoFiltro.ENVIADO -> pedidos.filter { it.estado.equals("ENVIADO", ignoreCase = true) }
+                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
+                }
+
+                if (pedidosFiltrados.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No hay pedidos para este filtro")
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                    ) {
+                        items(pedidosFiltrados, key = { it.id }) { pedido ->
+                            PedidoItem(
+                                pedido = pedido,
+                                mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
+                                onAceptar = {
+                                    if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
+                                        viewModel.aceptarPedido(pedido.id)
+                                    }
+                                },
+                                onRechazar = {
+                                    if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
+                                        viewModel.rechazarPedido(pedido.id)
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -225,6 +334,8 @@ fun PedidosAdminScreen(
             Icon(Icons.Default.Download, contentDescription = "Descargar pedidos")
         }
     }
+
+}
 
 }
 @Composable
