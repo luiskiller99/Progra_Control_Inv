@@ -1,5 +1,12 @@
 package com.example.controlinv.empleado
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,8 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.exoplayer.offline.Download
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 private fun idPedidoCorto(id: String?): String {
@@ -40,19 +56,105 @@ private fun idPedidoCorto(id: String?): String {
     val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
     return hash6.toString().padStart(6, '0')
 }
+private data class ProductoExportado(
+    val codigo: String,
+    val descripcion: String,
+    val cantidad: String
+)
+private fun parseProducto(productoTexto: String): ProductoExportado {
+    val regex = Regex("""(\d+)\s*x\s*\[(.*?)]\s*(.*)""")
+    val match = regex.find(productoTexto.trim())
+    return if (match != null) {
+        ProductoExportado(
+            codigo = match.groupValues[2].ifBlank { "N/A" },
+            descripcion = match.groupValues[3].ifBlank { "Producto" },
+            cantidad = match.groupValues[1]
+        )
+    } else {
+        ProductoExportado(codigo = "N/A", descripcion = productoTexto, cantidad = "")
+    }
+}
+private fun escaparCsv(texto: String): String =
+    "\"" + texto.replace("\"", "\"\"") + "\""
+@RequiresApi(Build.VERSION_CODES.Q)
+private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
+    if (pedidos.isEmpty()) {
+        Toast.makeText(context, "No hay pedidos para exportar", Toast.LENGTH_SHORT).show()
+        return
+    }
 
+    val fecha = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val nombreArchivo = "pedidos_bodega_$fecha.csv"
+
+    val contenido = buildString {
+        appendLine("empleado,id_pedido,estado,codigo,descripcion,cantidad")
+        pedidos.forEach { pedido ->
+            val empleado = pedido.empleadoEmail
+            if (pedido.productos.isEmpty()) {
+                appendLine(
+                    listOf(
+                        escaparCsv(empleado),
+                        escaparCsv(idPedidoCorto(pedido.id)),
+                        escaparCsv(pedido.estado),
+                        escaparCsv(""),
+                        escaparCsv(""),
+                        escaparCsv("")
+                    ).joinToString(",")
+                )
+            } else {
+                pedido.productos.forEach { productoTexto ->
+                    val p = parseProducto(productoTexto)
+                    appendLine(
+                        listOf(
+                            escaparCsv(empleado),
+                            escaparCsv(idPedidoCorto(pedido.id)),
+                            escaparCsv(pedido.estado),
+                            escaparCsv(p.codigo),
+                            escaparCsv(p.descripcion),
+                            escaparCsv(p.cantidad)
+                        ).joinToString(",")
+                    )
+                }
+            }
+        }
+    }
+
+    runCatching {
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
+            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("No se pudo crear el archivo")
+
+        resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
+            writer?.write(contenido)
+        }
+    }.onSuccess {
+        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
+    }.onFailure {
+        Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,
     RECHAZADO
 }
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
 ) {
     val pedidos by viewModel.listaPedidos.collectAsState()
+    val context = LocalContext.current
     var filtro by remember { mutableStateOf(PedidoFiltro.ENVIADO) }
-    if (viewModel.cargando) {
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (viewModel.cargando) {
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -114,8 +216,17 @@ fun PedidosAdminScreen(
             }
         }
 
-}
+        FloatingActionButton(
+            onClick = { exportarPedidosCsv(context, pedidos) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Download, contentDescription = "Descargar pedidos")
+        }
+    }
 
+}
 @Composable
 fun PedidoItem(
     pedido: PedidoUI,

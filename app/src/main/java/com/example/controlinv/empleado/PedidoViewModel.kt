@@ -18,11 +18,19 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.text.Normalizer
 
 
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
+)
+
+data class MiPedidoUI(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val comentario: String
 )
 
 class PedidoViewModel(
@@ -33,6 +41,11 @@ class PedidoViewModel(
     var carrito = mutableStateListOf<ItemCarrito>()
         private set
     var cargando by mutableStateOf(false)
+        private set
+    var cargandoMisPedidos by mutableStateOf(false)
+        private set
+
+    var misPedidos by mutableStateOf<List<MiPedidoUI>>(emptyList())
         private set
 
     private var inventarioOriginal: List<Inventario> = emptyList()
@@ -126,19 +139,16 @@ class PedidoViewModel(
             }
         }
     }
-
     fun refrescarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private suspend fun recargarInventario() {
         try {
             cargando = true
@@ -153,7 +163,6 @@ class PedidoViewModel(
             cargando = false
         }
     }
-
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
@@ -168,11 +177,9 @@ class PedidoViewModel(
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
-
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
-
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -186,15 +193,61 @@ class PedidoViewModel(
             }
         }
     }
+    fun cargarMisPedidos(userId: String?) {
+        if (userId.isNullOrBlank()) {
+            misPedidos = emptyList()
+            return
+        }
 
-    fun filtrarInventario(texto: String) {
-        if (texto.isBlank()) {
-            inventario = inventarioOriginal
-        } else {
-            inventario = inventarioOriginal.filter {
-                it.descripcion?.contains(texto, ignoreCase = true) == true ||
-                    it.clasificacion?.contains(texto, ignoreCase = true) == true
+        viewModelScope.launch {
+            try {
+                cargandoMisPedidos = true
+                val pedidos = supabase
+                    .from("pedidos")
+                    .select {
+                        filter { eq("empleado_id", userId) }
+                    }
+                    .decodeList<Pedido>()
+
+                misPedidos = pedidos
+                    .sortedByDescending { it.fecha }
+                    .map {
+                        MiPedidoUI(
+                            id = it.id,
+                            fecha = it.fecha,
+                            estado = it.estado,
+                            comentario = it.comentario.orEmpty()
+                        )
+                    }
+            } catch (e: Exception) {
+                Log.e("PEDIDO", "Error cargando mis pedidos", e)
+            } finally {
+                cargandoMisPedidos = false
             }
         }
     }
+    fun filtrarInventario(texto: String) {
+        val consulta = normalizarTexto(texto)
+        if (consulta.isBlank()) {
+            inventario = inventarioOriginal
+            return
+        }
+
+        val terminos = consulta.split(" ").filter { it.isNotBlank() }
+
+        inventario = inventarioOriginal.filter { item ->
+            val descripcion = normalizarTexto(item.descripcion)
+            val clasificacion = normalizarTexto(item.clasificacion)
+            val baseBusqueda = "$descripcion $clasificacion"
+
+            terminos.all { termino -> baseBusqueda.contains(termino) }
+        }
+    }
+    private fun normalizarTexto(valor: String?): String {
+        if (valor.isNullOrBlank()) return ""
+        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
+            .replace("\\p{M}+".toRegex(), "")
+            .trim()
+    }
+
 }
