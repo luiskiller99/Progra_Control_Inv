@@ -21,10 +21,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.text.Normalizer
 
 
-
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
+)
+
+data class MiPedidoUI(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val comentario: String
 )
 
 class PedidoViewModel(
@@ -35,6 +41,11 @@ class PedidoViewModel(
     var carrito = mutableStateListOf<ItemCarrito>()
         private set
     var cargando by mutableStateOf(false)
+        private set
+    var cargandoMisPedidos by mutableStateOf(false)
+        private set
+
+    var misPedidos by mutableStateOf<List<MiPedidoUI>>(emptyList())
         private set
 
     private var inventarioOriginal: List<Inventario> = emptyList()
@@ -189,6 +200,41 @@ class PedidoViewModel(
         }
     }
 
+
+    fun cargarMisPedidos(userId: String?) {
+        if (userId.isNullOrBlank()) {
+            misPedidos = emptyList()
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                cargandoMisPedidos = true
+                val pedidos = supabase
+                    .from("pedidos")
+                    .select {
+                        filter { eq("empleado_id", userId) }
+                    }
+                    .decodeList<Pedido>()
+
+                misPedidos = pedidos
+                    .sortedByDescending { it.fecha }
+                    .map {
+                        MiPedidoUI(
+                            id = it.id,
+                            fecha = it.fecha,
+                            estado = it.estado,
+                            comentario = it.comentario.orEmpty()
+                        )
+                    }
+            } catch (e: Exception) {
+                Log.e("PEDIDO", "Error cargando mis pedidos", e)
+            } finally {
+                cargandoMisPedidos = false
+            }
+        }
+    }
+
     fun filtrarInventario(texto: String) {
         val consulta = normalizarTexto(texto)
         if (consulta.isBlank()) {
@@ -205,6 +251,13 @@ class PedidoViewModel(
 
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
+    }
+
+    private fun normalizarTexto(valor: String?): String {
+        if (valor.isNullOrBlank()) return ""
+        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
+            .replace("\p{M}+".toRegex(), "")
+            .trim()
     }
 
     private fun normalizarTexto(valor: String?): String {

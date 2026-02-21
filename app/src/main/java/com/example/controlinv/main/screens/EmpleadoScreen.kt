@@ -16,7 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
@@ -48,6 +50,7 @@ import com.example.controlinv.R
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.ItemCarrito
+import com.example.controlinv.empleado.MiPedidoUI
 import com.example.controlinv.empleado.PedidoViewModel
 import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.inventario.model.Inventario
@@ -66,6 +69,65 @@ private fun resolverImagenProducto(item: Inventario): String? {
         .removePrefix("object/public/productos/")
 
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
+}
+
+
+private fun idPedidoCorto(id: String): String {
+    val soloDigitos = id.filter { it.isDigit() }
+    return when {
+        soloDigitos.length >= 6 -> soloDigitos.takeLast(6)
+        soloDigitos.isNotEmpty() -> soloDigitos.padStart(6, '0')
+        else -> ((id.hashCode().toLong() and 0xffffffffL) % 1_000_000L).toString().padStart(6, '0')
+    }
+}
+
+@Composable
+private fun MisPedidosSection(
+    pedidos: List<MiPedidoUI>,
+    cargando: Boolean,
+    onRecargar: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Mis pedidos", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                IconButton(onClick = onRecargar) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar mis pedidos")
+                }
+            }
+
+            if (cargando) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else if (pedidos.isEmpty()) {
+                Text("Aún no tienes pedidos.", style = MaterialTheme.typography.bodySmall)
+            } else {
+                pedidos.forEach { pedido ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (pedido.comentario.isNotBlank()) {
+                        Text(
+                            "Comentario: ${pedido.comentario}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Divider(modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -131,16 +193,6 @@ private fun CarritoResumen(
                     }
                     Divider()
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Button(
-                onClick = onConfirmar,
-                enabled = carrito.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Confirmar pedido")
             }
         }
     }
@@ -215,11 +267,14 @@ fun PedidoEmpleadoScreen(
     val pedidoViewModel: PedidoViewModel = viewModel(factory = PedidoViewModelFactory(supabase))
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
+    var mostrarMisPedidos by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         pedidoViewModel.refrescarInventario()
+        val id = supabase.auth.currentUserOrNull()?.id
+        pedidoViewModel.cargarMisPedidos(id)
     }
 
     if (pedidoViewModel.cargando) {
@@ -234,6 +289,12 @@ fun PedidoEmpleadoScreen(
             TopAppBar(
                 title = { Text("Inventario") },
                 actions = {
+                    IconButton(onClick = {
+                        mostrarMisPedidos = !mostrarMisPedidos
+                        if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
+                    }) {
+                        Icon(Icons.Default.List, contentDescription = "Mis pedidos")
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
                     }
@@ -282,6 +343,26 @@ fun PedidoEmpleadoScreen(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(16.dp)
             )
+
+            Button(
+                onClick = {
+                    mostrarMisPedidos = !mostrarMisPedidos
+                    if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
+                },
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(if (mostrarMisPedidos) "Ocultar mis pedidos" else "Mis pedidos")
+            }
+
+            if (mostrarMisPedidos) {
+                MisPedidosSection(
+                    pedidos = pedidoViewModel.misPedidos,
+                    cargando = pedidoViewModel.cargandoMisPedidos,
+                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
+                )
+            }
 
             OutlinedTextField(
                 value = textoBusqueda,
