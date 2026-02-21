@@ -1,28 +1,31 @@
 package com.example.controlinv.ui.theme
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+
 private val DarkColorScheme = darkColorScheme(
     primary = AceroBlueLight,
-    onPrimary = Slate900,
-    primaryContainer = Slate700,
-    onPrimaryContainer = Slate100,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF0A2533),
+    onPrimaryContainer = Color(0xFFE6F7FF),
     secondary = AmberAccentLight,
-    onSecondary = Slate900,
+    onSecondary = Color.Black,
     tertiary = AceroBlue,
-    onTertiary = Slate100,
+    onTertiary = Color.White,
     background = BackgroundDark,
-    onBackground = Slate100,
+    onBackground = Color.White,
     surface = SurfaceDark,
-    onSurface = Slate100,
-    surfaceVariant = Slate700,
-    onSurfaceVariant = Slate300,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF1A1A1A),
+    onSurfaceVariant = Color(0xFFE5E7EB),
     error = ErrorRed,
-    onError = Slate100
+    onError = Color.White
 )
+
 private val LightColorScheme = lightColorScheme(
     primary = AceroBlue,
     onPrimary = Color.White,
@@ -41,12 +44,14 @@ private val LightColorScheme = lightColorScheme(
     error = ErrorRed,
     onError = Color.White
 )
+
 @Composable
 fun ControlInvTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
