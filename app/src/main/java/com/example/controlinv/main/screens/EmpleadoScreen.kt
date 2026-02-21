@@ -372,6 +372,26 @@ fun PedidoEmpleadoScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
+            Button(
+                onClick = {
+                    mostrarMisPedidos = !mostrarMisPedidos
+                    if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
+                },
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(if (mostrarMisPedidos) "Ocultar mis pedidos" else "Mis pedidos")
+            }
+
+            if (mostrarMisPedidos) {
+                MisPedidosSection(
+                    pedidos = pedidoViewModel.misPedidos,
+                    cargando = pedidoViewModel.cargandoMisPedidos,
+                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
+                )
+            }
+
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { texto ->
