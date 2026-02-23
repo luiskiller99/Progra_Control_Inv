@@ -192,6 +192,20 @@ class PedidoViewModel(
         carrito.removeAll { it.producto.id == productoId }
     }
 
+
+    fun actualizarCantidadCarrito(productoId: String, nuevaCantidad: Int) {
+        val index = carrito.indexOfFirst { it.producto.id == productoId }
+        if (index < 0) return
+
+        when {
+            nuevaCantidad <= 0 -> carrito.removeAt(index)
+            else -> {
+                val actual = carrito[index]
+                carrito[index] = actual.copy(cantidad = nuevaCantidad)
+            }
+        }
+    }
+
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -289,12 +303,4 @@ class PedidoViewModel(
             .replace("\p{M}+".toRegex(), "")
             .trim()
     }
-
-    private fun normalizarTexto(valor: String?): String {
-        if (valor.isNullOrBlank()) return ""
-        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
-            .trim()
-    }
-
 }
