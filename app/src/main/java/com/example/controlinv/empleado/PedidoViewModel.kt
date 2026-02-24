@@ -1,5 +1,4 @@
 package com.example.controlinv.empleado
-
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -13,24 +12,19 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.text.Normalizer
-
-
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
 )
-
 data class ProductoPedidoUI(
     val descripcion: String,
     val cantidad: Int
 )
-
 data class MiPedidoUI(
     val id: String,
     val fecha: String,
@@ -38,7 +32,6 @@ data class MiPedidoUI(
     val comentario: String,
     val productos: List<ProductoPedidoUI>
 )
-
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -50,16 +43,13 @@ class PedidoViewModel(
         private set
     var cargandoMisPedidos by mutableStateOf(false)
         private set
-
     var misPedidos by mutableStateOf<List<MiPedidoUI>>(emptyList())
         private set
-
     private var inventarioOriginal: List<Inventario> = emptyList()
 
     init {
         cargarInventario()
     }
-
     fun confirmarPedido(
         userId: String,
         email: String,
@@ -145,19 +135,16 @@ class PedidoViewModel(
             }
         }
     }
-
     fun refrescarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private fun cargarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
-
     private suspend fun recargarInventario() {
         try {
             cargando = true
@@ -172,7 +159,6 @@ class PedidoViewModel(
             cargando = false
         }
     }
-
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
@@ -187,11 +173,9 @@ class PedidoViewModel(
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
-
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
-
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -205,8 +189,6 @@ class PedidoViewModel(
             }
         }
     }
-
-
     fun cargarMisPedidos(userId: String?) {
         if (userId.isNullOrBlank()) {
             misPedidos = emptyList()
@@ -264,7 +246,6 @@ class PedidoViewModel(
             }
         }
     }
-
     fun filtrarInventario(texto: String) {
         val consulta = normalizarTexto(texto)
         if (consulta.isBlank()) {
@@ -282,19 +263,10 @@ class PedidoViewModel(
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
     }
-
     private fun normalizarTexto(valor: String?): String {
         if (valor.isNullOrBlank()) return ""
         return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
+            .replace("\\p{M}+".toRegex(), "")
             .trim()
     }
-
-    private fun normalizarTexto(valor: String?): String {
-        if (valor.isNullOrBlank()) return ""
-        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
-            .trim()
-    }
-
 }
