@@ -286,14 +286,7 @@ class PedidoViewModel(
     private fun normalizarTexto(valor: String?): String {
         if (valor.isNullOrBlank()) return ""
         return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
-            .trim()
-    }
-
-    private fun normalizarTexto(valor: String?): String {
-        if (valor.isNullOrBlank()) return ""
-        return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
-            .replace("\p{M}+".toRegex(), "")
+            .replace("\\p{M}+".toRegex(), "")
             .trim()
     }
 
