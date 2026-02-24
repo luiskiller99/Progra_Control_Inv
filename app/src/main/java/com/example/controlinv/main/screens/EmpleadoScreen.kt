@@ -74,8 +74,6 @@ private fun resolverImagenProducto(item: Inventario): String? {
 
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
-
-
 private fun idPedidoCorto(id: String): String {
     val soloDigitos = id.filter { it.isDigit() }
     return when {
@@ -84,7 +82,6 @@ private fun idPedidoCorto(id: String): String {
         else -> ((id.hashCode().toLong() and 0xffffffffL) % 1_000_000L).toString().padStart(6, '0')
     }
 }
-
 @Composable
 private fun MisPedidosDialog(
     pedidos: List<MiPedidoUI>,
@@ -149,7 +146,6 @@ private fun MisPedidosDialog(
         }
     )
 }
-
 @Composable
 private fun CarritoResumen(
     carrito: List<ItemCarrito>,
@@ -267,7 +263,6 @@ private fun CarritoResumen(
         }
     }
 }
-
 @Composable
 private fun ProductoCard(
     item: Inventario,
