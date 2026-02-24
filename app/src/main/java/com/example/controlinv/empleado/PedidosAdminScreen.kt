@@ -53,6 +53,103 @@ private fun idPedidoCorto(id: String?): String {
     val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
     return hash6.toString().padStart(6, '0')
 }
+
+
+private data class ProductoExportado(
+    val codigo: String,
+    val descripcion: String,
+    val cantidad: String
+)
+
+private fun parseProducto(productoTexto: String): ProductoExportado {
+    val regex = Regex("""(\d+)\s*x\s*\[(.*?)]\s*(.*)""")
+    val match = regex.find(productoTexto.trim())
+    return if (match != null) {
+        ProductoExportado(
+            codigo = match.groupValues[2].ifBlank { "N/A" },
+            descripcion = match.groupValues[3].ifBlank { "Producto" },
+            cantidad = match.groupValues[1]
+        )
+    } else {
+        ProductoExportado(codigo = "N/A", descripcion = productoTexto, cantidad = "")
+    }
+}
+
+private fun escaparCsv(texto: String): String =
+    "\"" + texto.replace("\"", "\"\"") + "\""
+
+private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
+    val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+    if (pedidosAceptados.isEmpty()) {
+        Toast.makeText(context, "No hay pedidos aceptados para exportar", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val fecha = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val nombreArchivo = "pedidos_bodega_$fecha.csv"
+
+    val contenido = buildString {
+        appendLine("empleado,id_pedido,estado,codigo,descripcion,cantidad")
+        pedidosAceptados.forEach { pedido ->
+            val empleado = pedido.empleadoEmail
+            if (pedido.productos.isEmpty()) {
+                appendLine(
+                    listOf(
+                        escaparCsv(empleado),
+                        escaparCsv(idPedidoCorto(pedido.id)),
+                        escaparCsv(pedido.estado),
+                        escaparCsv(""),
+                        escaparCsv(""),
+                        escaparCsv("")
+                    ).joinToString(",")
+                )
+            } else {
+                pedido.productos.forEach { productoTexto ->
+                    val p = parseProducto(productoTexto)
+                    appendLine(
+                        listOf(
+                            escaparCsv(empleado),
+                            escaparCsv(idPedidoCorto(pedido.id)),
+                            escaparCsv(pedido.estado),
+                            escaparCsv(p.codigo),
+                            escaparCsv(p.descripcion),
+                            escaparCsv(p.cantidad)
+                        ).joinToString(",")
+                    )
+                }
+            }
+        }
+    }
+
+    runCatching {
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
+            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("No se pudo crear el archivo")
+
+        resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
+            writer?.write(contenido)
+        }
+    }.onSuccess {
+        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
+    }.onFailure {
+        Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
+
+private fun idPedidoCorto(id: String?): String {
+    if (id.isNullOrBlank()) return "000000"
+    val soloDigitos = id.filter { it.isDigit() }
+    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
+    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
+    return hash6.toString().padStart(6, '0')
+}
 private data class ProductoExportado(
     val codigo: String,
     val descripcion: String,
