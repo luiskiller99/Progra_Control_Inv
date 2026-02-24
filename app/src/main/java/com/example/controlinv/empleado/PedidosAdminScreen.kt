@@ -142,11 +142,32 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     }
 }
 
+    runCatching {
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
+            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("No se pudo crear el archivo")
+
+        resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
+            writer?.write(contenido)
+        }
+    }.onSuccess {
+        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
+    }.onFailure {
+        Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+}
 enum class PedidoFiltro {
     ENVIADO,
     ACEPTADO,
     RECHAZADO
 }
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
