@@ -91,11 +91,12 @@ class PedidoViewModel(
                 val productosJson = productos.joinToString(",") {
                     "\"${escapeJson(it)}\""
                 }
+                /**"emanuel.acuna@holcim.com" ,
+                "xavier.lezcanochavarria@holcim.com"*/
                 val payload = """
                     {
                       "to": [
-                        "emanuel.acuna@holcim.com" ,
-                         "xavier.lezcanochavarria@holcim.com"
+                        "luis3lizondo@gmail.com"
                       ],
                       "empleado_email": "${escapeJson(empleadoEmail)}",
                       "comentario": "${escapeJson(comentario)}",
