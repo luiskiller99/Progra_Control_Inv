@@ -24,17 +24,19 @@ import java.text.Normalizer
 import java.net.HttpURLConnection
 import java.net.URL
 
-
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
 )
+<<<<<<< Updated upstream
 
 data class ProductoPedidoUI(
     val descripcion: String,
     val cantidad: Int
 )
 
+=======
+>>>>>>> Stashed changes
 data class MiPedidoUI(
     val id: String,
     val fecha: String,
@@ -42,7 +44,6 @@ data class MiPedidoUI(
     val comentario: String,
     val productos: List<ProductoPedidoUI>
 )
-
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -54,15 +55,13 @@ class PedidoViewModel(
         private set
     var cargandoMisPedidos by mutableStateOf(false)
         private set
-
     var misPedidos by mutableStateOf<List<MiPedidoUI>>(emptyList())
         private set
-
     private var inventarioOriginal: List<Inventario> = emptyList()
-
     init {
         cargarInventario()
     }
+<<<<<<< Updated upstream
 
 
     private fun escapeJson(texto: String): String =
@@ -114,6 +113,8 @@ class PedidoViewModel(
         }
     }
 
+=======
+>>>>>>> Stashed changes
     fun confirmarPedido(
         userId: String,
         email: String,
