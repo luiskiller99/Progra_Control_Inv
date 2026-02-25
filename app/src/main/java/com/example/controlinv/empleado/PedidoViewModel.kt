@@ -11,6 +11,7 @@ import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -34,6 +35,7 @@ data class ProductoPedidoUI(
     val descripcion: String,
     val cantidad: Int
 )
+
 
 data class MiPedidoUI(
     val id: String,
@@ -112,6 +114,7 @@ class PedidoViewModel(
             }
         }
     }
+
 
     fun confirmarPedido(
         userId: String,

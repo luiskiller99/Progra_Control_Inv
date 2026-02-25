@@ -417,6 +417,13 @@ fun PedidoEmpleadoScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
+            IconButton(onClick = {
+                mostrarMisPedidosDialog = true
+                pedidoViewModel.cargarMisPedidos(userId)
+            }) {
+                Icon(Icons.Default.List, contentDescription = "Mis pedidos")
+            }
+
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { texto ->
