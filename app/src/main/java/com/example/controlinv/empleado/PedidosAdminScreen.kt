@@ -2,9 +2,11 @@ package com.example.controlinv.empleado
 
 import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +80,7 @@ private fun parseProducto(productoTexto: String): ProductoExportado {
 private fun escaparCsv(texto: String): String =
     "\"" + texto.replace("\"", "\"\"") + "\""
 
+@RequiresApi(Build.VERSION_CODES.Q)
 private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
     if (pedidosAceptados.isEmpty()) {
@@ -147,6 +150,7 @@ enum class PedidoFiltro {
     ACEPTADO,
     RECHAZADO
 }
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
@@ -239,7 +243,7 @@ fun PedidosAdminScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Default.Download, contentDescription = "Descargar pedidos")
+            Icon(Icons.Filled.Download, contentDescription = "Descargar pedidos")
         }
     }
 
