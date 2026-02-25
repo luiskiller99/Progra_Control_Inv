@@ -11,6 +11,7 @@ import com.example.controlinv.inventario.model.Inventario
 import com.example.controlinv.auth.SUPABASE_KEY
 import com.example.controlinv.auth.SUPABASE_URL
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -80,8 +81,16 @@ class PedidoViewModel(
                     requestMethod = "POST"
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
+
+                    val session = supabase.auth.currentSessionOrNull()
+                    val accessToken = session?.accessToken
+
+                    setRequestProperty("Authorization", "Bearer $accessToken")
                     setRequestProperty("apikey", SUPABASE_KEY)
-                    setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
+
+                    //setRequestProperty("apikey", SUPABASE_KEY)
+                    //setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
+
                     connectTimeout = 8000
                     readTimeout = 8000
                 }
@@ -92,8 +101,8 @@ class PedidoViewModel(
                 val payload = """
                     {
                       "to": [
-                        "emanuel.acuna@holcim.com",
-                        "xavier.lezcanochavarria@holcim.com"
+                            "emanuel.acuna@holcim.com",
+                            "xavier.lezcanochavarria@holcim.com"
                       ],
                       "empleado_email": "${escapeJson(empleadoEmail)}",
                       "comentario": "${escapeJson(comentario)}",
@@ -105,6 +114,7 @@ class PedidoViewModel(
                 val code = conn.responseCode
                 if (code !in 200..299) {
                     val err = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull()
+                    Log.d("PEDIDO", "Payload enviado: $payload")
                     Log.e("PEDIDO", "Notificación correo falló HTTP $code: $err")
                 }
                 conn.disconnect()
