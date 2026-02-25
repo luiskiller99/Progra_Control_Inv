@@ -25,19 +25,18 @@ import java.text.Normalizer
 import java.net.HttpURLConnection
 import java.net.URL
 
+
 data class ItemCarrito(
     val producto: Inventario,
     var cantidad: Int,
 )
-<<<<<<< Updated upstream
 
 data class ProductoPedidoUI(
     val descripcion: String,
     val cantidad: Int
 )
 
-=======
->>>>>>> Stashed changes
+
 data class MiPedidoUI(
     val id: String,
     val fecha: String,
@@ -45,6 +44,7 @@ data class MiPedidoUI(
     val comentario: String,
     val productos: List<ProductoPedidoUI>
 )
+
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -56,13 +56,15 @@ class PedidoViewModel(
         private set
     var cargandoMisPedidos by mutableStateOf(false)
         private set
+
     var misPedidos by mutableStateOf<List<MiPedidoUI>>(emptyList())
         private set
+
     private var inventarioOriginal: List<Inventario> = emptyList()
+
     init {
         cargarInventario()
     }
-<<<<<<< Updated upstream
 
 
     private fun escapeJson(texto: String): String =
@@ -80,16 +82,8 @@ class PedidoViewModel(
                     requestMethod = "POST"
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
-
-                    val session = supabase.auth.currentSessionOrNull()
-                    val accessToken = session?.accessToken
-
-                    setRequestProperty("Authorization", "Bearer $accessToken")
                     setRequestProperty("apikey", SUPABASE_KEY)
-
-                    //setRequestProperty("apikey", SUPABASE_KEY)
-                    //setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
-
+                    setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
                     connectTimeout = 8000
                     readTimeout = 8000
                 }
@@ -97,14 +91,10 @@ class PedidoViewModel(
                 val productosJson = productos.joinToString(",") {
                     "\"${escapeJson(it)}\""
                 }
-                /**
-                 * "emanuel.acuna@holcim.com",
-                 * "xavier.lezcanochavarria@holcim.com"
-                 * */
                 val payload = """
                     {
                       "to": [
-                            "luis3lizondo@gmail.com"
+                        "luis3lizondo@gmail.com"
                       ],
                       "empleado_email": "${escapeJson(empleadoEmail)}",
                       "comentario": "${escapeJson(comentario)}",
@@ -116,7 +106,6 @@ class PedidoViewModel(
                 val code = conn.responseCode
                 if (code !in 200..299) {
                     val err = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull()
-                    Log.d("PEDIDO", "Payload enviado: $payload")
                     Log.e("PEDIDO", "Notificación correo falló HTTP $code: $err")
                 }
                 conn.disconnect()
@@ -126,8 +115,7 @@ class PedidoViewModel(
         }
     }
 
-=======
->>>>>>> Stashed changes
+
     fun confirmarPedido(
         userId: String,
         email: String,
@@ -187,8 +175,9 @@ class PedidoViewModel(
                 Log.i("PEDIDO", "Pedido creado correctamente")
 
                 val resumenProductos = itemsValidos.map { item ->
+                    val codigo = item.producto.codigo?.takeIf { it.isNotBlank() } ?: "N/A"
                     val descripcion = item.producto.descripcion ?: "Producto"
-                    "${item.cantidad} x $descripcion"
+                    "${item.cantidad} x [$codigo] $descripcion"
                 }
                 enviarAvisoCorreoPedido(
                     empleadoEmail = email,

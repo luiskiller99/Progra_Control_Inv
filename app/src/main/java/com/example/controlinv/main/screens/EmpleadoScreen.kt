@@ -60,6 +60,7 @@ import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
+
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
         ?: item.extra1?.takeIf { it.isNotBlank() }
@@ -73,6 +74,8 @@ private fun resolverImagenProducto(item: Inventario): String? {
 
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
+
+
 private fun idPedidoCorto(id: String): String {
     val soloDigitos = id.filter { it.isDigit() }
     return when {
@@ -81,6 +84,7 @@ private fun idPedidoCorto(id: String): String {
         else -> ((id.hashCode().toLong() and 0xffffffffL) % 1_000_000L).toString().padStart(6, '0')
     }
 }
+
 @Composable
 private fun MisPedidosDialog(
     pedidos: List<MiPedidoUI>,
@@ -145,6 +149,7 @@ private fun MisPedidosDialog(
         }
     )
 }
+
 @Composable
 private fun CarritoResumen(
     carrito: List<ItemCarrito>,
@@ -262,6 +267,7 @@ private fun CarritoResumen(
         }
     }
 }
+
 @Composable
 private fun ProductoCard(
     item: Inventario,
@@ -323,56 +329,6 @@ private fun ProductoCard(
     }
 }
 
-@Composable
-fun MisPedidosSection(
-    pedidos: List<MiPedidoUI>,
-    cargando: Boolean,
-    onRecargar: () -> Unit
-) {
-    if (cargando) {
-        LinearProgressIndicator(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        )
-        return
-    }
-
-    if (pedidos.isEmpty()) {
-        Text(
-            "No tienes pedidos aún",
-            modifier = Modifier.padding(8.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        return
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        pedidos.forEach { pedido ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        "Estado: ${pedido.estado}",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Text(
-                        pedido.fecha.replace("T", " ").substring(0, 16),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -382,7 +338,6 @@ fun PedidoEmpleadoScreen(
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
     var mostrarMisPedidosDialog by remember { mutableStateOf(false) }
-    var mostrarMisPedidos by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
