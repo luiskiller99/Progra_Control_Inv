@@ -47,8 +47,8 @@ private fun formatearItemLog(raw: String): String {
         val obj = Json.parseToJsonElement(raw).jsonObject
         buildString {
             obj.entries.forEach { (key, value) ->
+                if (key == "id") return@forEach
                 val nombre = when (key) {
-                    "id" -> "ID"
                     "codigo" -> "Código"
                     "descripcion" -> "Descripción"
                     "cantidad" -> "Cantidad"
@@ -130,11 +130,6 @@ fun InventarioLogsScreen() {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Text(
-                            "Producto ID: ${log.producto_id}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Row(
