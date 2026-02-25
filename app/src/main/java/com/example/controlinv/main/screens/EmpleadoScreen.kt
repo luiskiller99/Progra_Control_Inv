@@ -322,6 +322,57 @@ private fun ProductoCard(
         }
     }
 }
+
+@Composable
+fun MisPedidosSection(
+    pedidos: List<MiPedidoUI>,
+    cargando: Boolean,
+    onRecargar: () -> Unit
+) {
+    if (cargando) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+        return
+    }
+
+    if (pedidos.isEmpty()) {
+        Text(
+            "No tienes pedidos aún",
+            modifier = Modifier.padding(8.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        pedidos.forEach { pedido ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text(
+                        "Estado: ${pedido.estado}",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        pedido.fecha.replace("T", " ").substring(0, 16),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -331,6 +382,7 @@ fun PedidoEmpleadoScreen(
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
     var mostrarMisPedidosDialog by remember { mutableStateOf(false) }
+    var mostrarMisPedidos by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
