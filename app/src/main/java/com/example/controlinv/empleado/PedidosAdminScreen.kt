@@ -2,9 +2,11 @@ package com.example.controlinv.empleado
 
 import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,8 +80,13 @@ private fun parseProducto(productoTexto: String): ProductoExportado {
 private fun escaparCsv(texto: String): String =
     "\"" + texto.replace("\"", "\"\"") + "\""
 
+@RequiresApi(Build.VERSION_CODES.Q)
 private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
-    val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+
+    val pedidosAceptados = pedidos.filter {
+        it.estado.equals("ACEPTADO", ignoreCase = true)
+    }
+
     if (pedidosAceptados.isEmpty()) {
         Toast.makeText(context, "No hay pedidos aceptados para exportar", Toast.LENGTH_SHORT).show()
         return
@@ -90,22 +97,25 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
 
     val contenido = buildString {
         appendLine("empleado,id_pedido,estado,codigo,descripcion,cantidad")
+
         pedidosAceptados.forEach { pedido ->
             val empleado = pedido.empleadoEmail
+
             if (pedido.productos.isEmpty()) {
                 appendLine(
                     listOf(
                         escaparCsv(empleado),
                         escaparCsv(idPedidoCorto(pedido.id)),
                         escaparCsv(pedido.estado),
-                        escaparCsv(""),
-                        escaparCsv(""),
-                        escaparCsv("")
+                        "",
+                        "",
+                        ""
                     ).joinToString(",")
                 )
             } else {
                 pedido.productos.forEach { productoTexto ->
                     val p = parseProducto(productoTexto)
+
                     appendLine(
                         listOf(
                             escaparCsv(empleado),
@@ -122,6 +132,7 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     }
 
     runCatching {
+
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
             put(MediaStore.Downloads.MIME_TYPE, "text/csv")
@@ -129,33 +140,16 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
         }
 
         val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: error("No se pudo crear el archivo")
+
+        val uri = resolver.insert(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            values
+        ) ?: throw Exception("No se pudo crear el archivo")
 
         resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
             writer?.write(contenido)
         }
-    }.onSuccess {
-        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
-    }.onFailure {
-        Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
-    }
-}
 
-    runCatching {
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, nombreArchivo)
-            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        }
-
-        val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: error("No se pudo crear el archivo")
-
-        resolver.openOutputStream(uri)?.bufferedWriter().use { writer ->
-            writer?.write(contenido)
-        }
     }.onSuccess {
         Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
     }.onFailure {

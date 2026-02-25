@@ -60,7 +60,6 @@ import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
-
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
         ?: item.extra1?.takeIf { it.isNotBlank() }
@@ -74,8 +73,6 @@ private fun resolverImagenProducto(item: Inventario): String? {
 
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
-
-
 private fun idPedidoCorto(id: String): String {
     val soloDigitos = id.filter { it.isDigit() }
     return when {
@@ -84,7 +81,6 @@ private fun idPedidoCorto(id: String): String {
         else -> ((id.hashCode().toLong() and 0xffffffffL) % 1_000_000L).toString().padStart(6, '0')
     }
 }
-
 @Composable
 private fun MisPedidosDialog(
     pedidos: List<MiPedidoUI>,
@@ -149,7 +145,6 @@ private fun MisPedidosDialog(
         }
     )
 }
-
 @Composable
 private fun CarritoResumen(
     carrito: List<ItemCarrito>,
@@ -267,7 +262,6 @@ private fun CarritoResumen(
         }
     }
 }
-
 @Composable
 private fun ProductoCard(
     item: Inventario,
@@ -328,7 +322,6 @@ private fun ProductoCard(
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -417,24 +410,11 @@ fun PedidoEmpleadoScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
-            Button(
-                onClick = {
-                    mostrarMisPedidos = !mostrarMisPedidos
-                    if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
-                },
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(if (mostrarMisPedidos) "Ocultar mis pedidos" else "Mis pedidos")
-            }
-
-            if (mostrarMisPedidos) {
-                MisPedidosSection(
-                    pedidos = pedidoViewModel.misPedidos,
-                    cargando = pedidoViewModel.cargandoMisPedidos,
-                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
-                )
+            IconButton(onClick = {
+                mostrarMisPedidosDialog = true
+                pedidoViewModel.cargarMisPedidos(userId)
+            }) {
+                Icon(Icons.Default.List, contentDescription = "Mis pedidos")
             }
 
             OutlinedTextField(
