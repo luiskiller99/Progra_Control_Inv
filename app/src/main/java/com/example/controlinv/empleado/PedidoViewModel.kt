@@ -8,17 +8,21 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.controlinv.inventario.model.Inventario
+import com.example.controlinv.auth.SUPABASE_KEY
+import com.example.controlinv.auth.SUPABASE_URL
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.text.Normalizer
+import java.net.HttpURLConnection
+import java.net.URL
 
 
 data class ItemCarrito(
@@ -26,11 +30,17 @@ data class ItemCarrito(
     var cantidad: Int,
 )
 
+data class ProductoPedidoUI(
+    val descripcion: String,
+    val cantidad: Int
+)
+
 data class MiPedidoUI(
     val id: String,
     val fecha: String,
     val estado: String,
-    val comentario: String
+    val comentario: String,
+    val productos: List<ProductoPedidoUI>
 )
 
 class PedidoViewModel(
@@ -52,6 +62,56 @@ class PedidoViewModel(
 
     init {
         cargarInventario()
+    }
+
+
+    private fun escapeJson(texto: String): String =
+        texto.replace("\\", "\\\\").replace("\"", "\\\"")
+
+    private fun enviarAvisoCorreoPedido(
+        empleadoEmail: String,
+        comentario: String,
+        productos: List<String>
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val url = URL("$SUPABASE_URL/functions/v1/notificar-pedido")
+                val conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("apikey", SUPABASE_KEY)
+                    setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                }
+
+                val productosJson = productos.joinToString(",") {
+                    "\"${escapeJson(it)}\""
+                }
+                val payload = """
+                    {
+                      "to": [
+                        "emanuel.acuna@holcim.com",
+                        "xavier.lezcanochavarria@holcim.com"
+                      ],
+                      "empleado_email": "${escapeJson(empleadoEmail)}",
+                      "comentario": "${escapeJson(comentario)}",
+                      "productos": [$productosJson]
+                    }
+                """.trimIndent()
+
+                conn.outputStream.use { it.write(payload.toByteArray()) }
+                val code = conn.responseCode
+                if (code !in 200..299) {
+                    val err = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull()
+                    Log.e("PEDIDO", "Notificación correo falló HTTP $code: $err")
+                }
+                conn.disconnect()
+            }.onFailure {
+                Log.e("PEDIDO", "No se pudo notificar por correo", it)
+            }
+        }
     }
 
     fun confirmarPedido(
@@ -111,6 +171,17 @@ class PedidoViewModel(
                 // 4) Refrescamos catálogo para mostrar stock actualizado
                 recargarInventario()
                 Log.i("PEDIDO", "Pedido creado correctamente")
+
+                val resumenProductos = itemsValidos.map { item ->
+                    val descripcion = item.producto.descripcion ?: "Producto"
+                    "${item.cantidad} x $descripcion"
+                }
+                enviarAvisoCorreoPedido(
+                    empleadoEmail = email,
+                    comentario = comentario,
+                    productos = resumenProductos
+                )
+
                 carrito.clear()
                 onOk()
             } catch (e: Exception) {
@@ -139,16 +210,19 @@ class PedidoViewModel(
             }
         }
     }
+
     fun refrescarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
+
     private fun cargarInventario() {
         viewModelScope.launch {
             recargarInventario()
         }
     }
+
     private suspend fun recargarInventario() {
         try {
             cargando = true
@@ -163,6 +237,7 @@ class PedidoViewModel(
             cargando = false
         }
     }
+
     fun agregarAlCarrito(item: Inventario, cantidad: Int) {
         if (cantidad <= 0) return
 
@@ -177,9 +252,25 @@ class PedidoViewModel(
             carrito.add(ItemCarrito(item, cantidad))
         }
     }
+
     fun quitarDelCarrito(productoId: String) {
         carrito.removeAll { it.producto.id == productoId }
     }
+
+
+    fun actualizarCantidadCarrito(id: String, cantidad: Int) {
+        val index = carrito.indexOfFirst { it.producto.id == id }
+        if (index < 0) return
+
+        when {
+            cantidad <= 0 -> carrito.removeAt(index)
+            else -> {
+                val actual = carrito[index]
+                carrito[index] = actual.copy(cantidad = cantidad)
+            }
+        }
+    }
+
     fun restarDelCarrito(productoId: String) {
         val index = carrito.indexOfFirst { it.producto.id == productoId }
         if (index >= 0) {
@@ -193,6 +284,8 @@ class PedidoViewModel(
             }
         }
     }
+
+
     fun cargarMisPedidos(userId: String?) {
         if (userId.isNullOrBlank()) {
             misPedidos = emptyList()
@@ -209,14 +302,38 @@ class PedidoViewModel(
                     }
                     .decodeList<Pedido>()
 
+                val detalles = supabase
+                    .from("pedido_detalle")
+                    .select()
+                    .decodeList<DetallePedido>()
+                    .groupBy { it.pedido_id }
+
+                val inventarioPorId = supabase
+                    .from("inventario")
+                    .select()
+                    .decodeList<Inventario>()
+                    .associateBy { it.id }
+
                 misPedidos = pedidos
                     .sortedByDescending { it.fecha }
-                    .map {
+                    .map { pedido ->
+                        val productos = detalles[pedido.id]
+                            .orEmpty()
+                            .map { det ->
+                                val descripcion = inventarioPorId[det.producto_id]?.descripcion
+                                    ?: "Producto ${det.producto_id.take(6)}"
+                                ProductoPedidoUI(
+                                    descripcion = descripcion,
+                                    cantidad = det.cantidad
+                                )
+                            }
+
                         MiPedidoUI(
-                            id = it.id,
-                            fecha = it.fecha,
-                            estado = it.estado,
-                            comentario = it.comentario.orEmpty()
+                            id = pedido.id,
+                            fecha = pedido.fecha,
+                            estado = pedido.estado,
+                            comentario = pedido.comentario.orEmpty(),
+                            productos = productos
                         )
                     }
             } catch (e: Exception) {
@@ -226,6 +343,7 @@ class PedidoViewModel(
             }
         }
     }
+
     fun filtrarInventario(texto: String) {
         val consulta = normalizarTexto(texto)
         if (consulta.isBlank()) {
@@ -243,11 +361,11 @@ class PedidoViewModel(
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
     }
+
     private fun normalizarTexto(valor: String?): String {
         if (valor.isNullOrBlank()) return ""
         return Normalizer.normalize(valor.lowercase(), Normalizer.Form.NFD)
             .replace("\\p{M}+".toRegex(), "")
             .trim()
     }
-
 }

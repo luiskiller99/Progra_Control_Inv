@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
@@ -32,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,7 +60,6 @@ import com.example.controlinv.empleado.PedidoViewModelFactory
 import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
-
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
         ?: item.extra1?.takeIf { it.isNotBlank() }
@@ -70,8 +73,6 @@ private fun resolverImagenProducto(item: Inventario): String? {
 
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
-
-
 private fun idPedidoCorto(id: String): String {
     val soloDigitos = id.filter { it.isDigit() }
     return when {
@@ -80,56 +81,70 @@ private fun idPedidoCorto(id: String): String {
         else -> ((id.hashCode().toLong() and 0xffffffffL) % 1_000_000L).toString().padStart(6, '0')
     }
 }
-
 @Composable
-private fun MisPedidosSection(
+private fun MisPedidosDialog(
     pedidos: List<MiPedidoUI>,
     cargando: Boolean,
-    onRecargar: () -> Unit
+    onRecargar: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Mis pedidos", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 IconButton(onClick = onRecargar) {
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar mis pedidos")
                 }
             }
-
+        },
+        text = {
             if (cargando) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else if (pedidos.isEmpty()) {
                 Text("Aún no tienes pedidos.", style = MaterialTheme.typography.bodySmall)
             } else {
-                pedidos.forEach { pedido ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    items(pedidos, key = { it.id }) { pedido ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            if (pedido.productos.isNotEmpty()) {
+                                pedido.productos.forEach { prod ->
+                                    Text(
+                                        "• ${prod.cantidad} x ${prod.descripcion}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+
+                            if (pedido.comentario.isNotBlank()) {
+                                Text(
+                                    "Comentario: ${pedido.comentario}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Divider(modifier = Modifier.padding(top = 4.dp))
+                        }
                     }
-                    if (pedido.comentario.isNotBlank()) {
-                        Text(
-                            "Comentario: ${pedido.comentario}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Divider(modifier = Modifier.padding(top = 4.dp))
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
-    }
+    )
 }
-
 @Composable
 private fun CarritoResumen(
     carrito: List<ItemCarrito>,
@@ -138,6 +153,7 @@ private fun CarritoResumen(
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
+    onActualizarCantidad: (String, Int) -> Unit,
     onConfirmar: () -> Unit
 ) {
     Card(
@@ -153,6 +169,9 @@ private fun CarritoResumen(
         ) {
             Text("Carrito (${carrito.size})", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
+
+            var editarProductoId by remember { mutableStateOf<String?>(null) }
+            var cantidadManual by remember { mutableStateOf("") }
 
             OutlinedTextField(
                 value = comentario,
@@ -185,7 +204,12 @@ private fun CarritoResumen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         IconButton(onClick = { onRestar(productId) }) { Text("-") }
-                        Text(item.cantidad.toString())
+                        TextButton(onClick = {
+                            editarProductoId = productId
+                            cantidadManual = item.cantidad.toString()
+                        }) {
+                            Text(item.cantidad.toString())
+                        }
                         IconButton(onClick = { onSumar(productId) }) { Text("+") }
                         IconButton(onClick = { onEliminar(productId) }) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar")
@@ -194,10 +218,50 @@ private fun CarritoResumen(
                     Divider()
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
+
+            if (editarProductoId != null) {
+                AlertDialog(
+                    onDismissRequest = { editarProductoId = null },
+                    title = { Text("Actualizar cantidad") },
+                    text = {
+                        OutlinedTextField(
+                            value = cantidadManual,
+                            onValueChange = { input ->
+                                cantidadManual = input.filter { it.isDigit() }.take(4)
+                            },
+                            label = { Text("Cantidad") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val id = editarProductoId
+                            val cantidad = cantidadManual.toIntOrNull()
+                            if (id != null && cantidad != null) {
+                                onActualizarCantidad(id, cantidad)
+                            }
+                            editarProductoId = null
+                        }) { Text("Guardar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editarProductoId = null }) { Text("Cancelar") }
+                    }
+                )
+            }
+
+            Button(
+                onClick = onConfirmar,
+                enabled = carrito.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar pedido")
+            }
         }
     }
 }
-
 @Composable
 private fun ProductoCard(
     item: Inventario,
@@ -259,6 +323,56 @@ private fun ProductoCard(
     }
 }
 
+@Composable
+fun MisPedidosSection(
+    pedidos: List<MiPedidoUI>,
+    cargando: Boolean,
+    onRecargar: () -> Unit
+) {
+    if (cargando) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+        return
+    }
+
+    if (pedidos.isEmpty()) {
+        Text(
+            "No tienes pedidos aún",
+            modifier = Modifier.padding(8.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        pedidos.forEach { pedido ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text(
+                        "Estado: ${pedido.estado}",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        pedido.fecha.replace("T", " ").substring(0, 16),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PedidoEmpleadoScreen(
@@ -267,6 +381,7 @@ fun PedidoEmpleadoScreen(
     val pedidoViewModel: PedidoViewModel = viewModel(factory = PedidoViewModelFactory(supabase))
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
+    var mostrarMisPedidosDialog by remember { mutableStateOf(false) }
     var mostrarMisPedidos by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -290,8 +405,8 @@ fun PedidoEmpleadoScreen(
                 title = { Text("Inventario") },
                 actions = {
                     IconButton(onClick = {
-                        mostrarMisPedidos = !mostrarMisPedidos
-                        if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
+                        mostrarMisPedidosDialog = true
+                        pedidoViewModel.cargarMisPedidos(userId)
                     }) {
                         Icon(Icons.Default.List, contentDescription = "Mis pedidos")
                     }
@@ -312,6 +427,9 @@ fun PedidoEmpleadoScreen(
                 },
                 onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
                 onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
+                onActualizarCantidad = { id: String, cantidad: Int ->
+                    pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
+                },
                 onConfirmar = {
                     if (userId == null) {
                         scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
@@ -344,24 +462,11 @@ fun PedidoEmpleadoScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
-            Button(
-                onClick = {
-                    mostrarMisPedidos = !mostrarMisPedidos
-                    if (mostrarMisPedidos) pedidoViewModel.cargarMisPedidos(userId)
-                },
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(if (mostrarMisPedidos) "Ocultar mis pedidos" else "Mis pedidos")
-            }
-
-            if (mostrarMisPedidos) {
-                MisPedidosSection(
-                    pedidos = pedidoViewModel.misPedidos,
-                    cargando = pedidoViewModel.cargandoMisPedidos,
-                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
-                )
+            IconButton(onClick = {
+                mostrarMisPedidosDialog = true
+                pedidoViewModel.cargarMisPedidos(userId)
+            }) {
+                Icon(Icons.Default.List, contentDescription = "Mis pedidos")
             }
 
             OutlinedTextField(
@@ -384,6 +489,15 @@ fun PedidoEmpleadoScreen(
                         onAgregar = { pedidoViewModel.agregarAlCarrito(item, 1) }
                     )
                 }
+            }
+
+            if (mostrarMisPedidosDialog) {
+                MisPedidosDialog(
+                    pedidos = pedidoViewModel.misPedidos,
+                    cargando = pedidoViewModel.cargandoMisPedidos,
+                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) },
+                    onDismiss = { mostrarMisPedidosDialog = false }
+                )
             }
         }
     }
