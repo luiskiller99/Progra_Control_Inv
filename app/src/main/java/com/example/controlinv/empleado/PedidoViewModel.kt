@@ -96,7 +96,7 @@ class PedidoViewModel(
                 val payload = """
                     {
                       "to": [
-                        "luis3lizondo@gmail.com"
+                        "emanuel.acuna@holcim.com" 
                       ],
                       "empleado_email": "${escapeJson(empleadoEmail)}",
                       "comentario": "${escapeJson(comentario)}",
