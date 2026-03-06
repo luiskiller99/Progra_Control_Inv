@@ -622,85 +622,91 @@ fun PedidoEmpleadoScreen(
                 }
 
                 EmpleadoTab.CARRITO -> {
-                    CarritoTabContent(
-                        carrito = pedidoViewModel.carrito,
-                        comentario = comentarioPedido,
-                        onComentarioChange = { comentarioPedido = it },
-                        onSumar = { id: String ->
-                            val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                            if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
-                        },
-                        onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
-                        onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
-                        onActualizarCantidad = { id: String, cantidad: Int ->
-                            pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
-                        },
-                        onConfirmar = {
-                            if (userId == null) {
-                                scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
-                                return@CarritoTabContent
-                            }
-
-                            val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-                            pedidoViewModel.confirmarPedido(
-                                userId = userId,
-                                email = emailUsuario,
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        item {
+                            CarritoTabContent(
+                                carrito = pedidoViewModel.carrito,
                                 comentario = comentarioPedido,
-                                onOk = {
-                                    comentarioPedido = ""
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Pedido creado correctamente")
-                                    }
+                                onComentarioChange = { comentarioPedido = it },
+                                onSumar = { id: String ->
+                                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
+                                    if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
                                 },
-                                onError = { error ->
-                                    scope.launch { snackbarHostState.showSnackbar(error) }
+                                onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
+                                onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
+                                onActualizarCantidad = { id: String, cantidad: Int ->
+                                    pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
+                                },
+                                onConfirmar = {
+                                    if (userId == null) {
+                                        scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
+                                        return@CarritoTabContent
+                                    }
+
+                                    val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                                    pedidoViewModel.confirmarPedido(
+                                        userId = userId,
+                                        email = emailUsuario,
+                                        comentario = comentarioPedido,
+                                        onOk = {
+                                            comentarioPedido = ""
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Pedido creado correctamente")
+                                            }
+                                        },
+                                        onError = { error ->
+                                            scope.launch { snackbarHostState.showSnackbar(error) }
+                                        }
+                                    )
                                 }
                             )
                         }
-                    )
 
-                    Spacer(Modifier.height(8.dp))
+                        item { Spacer(Modifier.height(8.dp)) }
 
-                    PedidoExtraordinarioVisualCard(
-                        nombreArticuloExtra = articuloExtraordinario,
-                        onNombreArticuloExtraChange = { articuloExtraordinario = it },
-                        cantidadExtra = cantidadExtraordinaria,
-                        onCantidadExtraChange = { cantidadExtraordinaria = it },
-                        itemsExtraordinarios = pedidosExtraordinarios,
-                        onAgregarExtraordinario = {
-                            val nombre = articuloExtraordinario.trim()
-                            val cantidad = cantidadExtraordinaria.toIntOrNull()
-                            when {
-                                nombre.isBlank() -> {
-                                    scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
+                        item {
+                            PedidoExtraordinarioVisualCard(
+                                nombreArticuloExtra = articuloExtraordinario,
+                                onNombreArticuloExtraChange = { articuloExtraordinario = it },
+                                cantidadExtra = cantidadExtraordinaria,
+                                onCantidadExtraChange = { cantidadExtraordinaria = it },
+                                itemsExtraordinarios = pedidosExtraordinarios,
+                                onAgregarExtraordinario = {
+                                    val nombre = articuloExtraordinario.trim()
+                                    val cantidad = cantidadExtraordinaria.toIntOrNull()
+                                    when {
+                                        nombre.isBlank() -> {
+                                            scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
+                                        }
+
+                                        cantidad == null || cantidad <= 0 -> {
+                                            scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
+                                        }
+
+                                        else -> {
+                                            pedidosExtraordinarios.add(
+                                                ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad)
+                                            )
+                                            articuloExtraordinario = ""
+                                            cantidadExtraordinaria = ""
+                                        }
+                                    }
+                                },
+                                onQuitarExtraordinario = { index ->
+                                    if (index in pedidosExtraordinarios.indices) {
+                                        pedidosExtraordinarios.removeAt(index)
+                                    }
+                                },
+                                onConfirmarExtraordinario = {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Pedido extraordinario listo (solo visual, pendiente Supabase)"
+                                        )
+                                    }
                                 }
-
-                                cantidad == null || cantidad <= 0 -> {
-                                    scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
-                                }
-
-                                else -> {
-                                    pedidosExtraordinarios.add(
-                                        ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad)
-                                    )
-                                    articuloExtraordinario = ""
-                                    cantidadExtraordinaria = ""
-                                }
-                            }
-                        },
-                        onQuitarExtraordinario = { index ->
-                            if (index in pedidosExtraordinarios.indices) {
-                                pedidosExtraordinarios.removeAt(index)
-                            }
-                        },
-                        onConfirmarExtraordinario = {
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    "Pedido extraordinario listo (solo visual, pendiente Supabase)"
-                                )
-                            }
+                            )
                         }
-                    )
+                    }
                 }
 
                 EmpleadoTab.PEDIDOS -> {
