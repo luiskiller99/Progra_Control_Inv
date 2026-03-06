@@ -201,10 +201,10 @@ private fun CarritoTabContent(
     carrito: List<ItemCarrito>,
     comentario: String,
     onComentarioChange: (String) -> Unit,
-    nombreArticuloExtra: String,
-    onNombreArticuloExtraChange: (String) -> Unit,
-    cantidadExtra: String,
-    onCantidadExtraChange: (String) -> Unit,
+    //nombreArticuloExtra: String,
+    //onNombreArticuloExtraChange: (String) -> Unit,
+    //cantidadExtra: String,
+    //onCantidadExtraChange: (String) -> Unit,
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
@@ -236,7 +236,7 @@ private fun CarritoTabContent(
             )
 
             Spacer(Modifier.height(8.dp))
-
+/*
             Text("Pedido extraordinario", style = MaterialTheme.typography.titleSmall)
             OutlinedTextField(
                 value = nombreArticuloExtra,
@@ -254,7 +254,7 @@ private fun CarritoTabContent(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
-
+*/
             Spacer(Modifier.height(8.dp))
 
             LazyColumn(
