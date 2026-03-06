@@ -37,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,6 +65,11 @@ private enum class EmpleadoTab {
     CARRITO,
     PEDIDOS
 }
+
+private data class ItemPedidoExtraordinarioUI(
+    val nombre: String,
+    val cantidad: Int
+)
 
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
@@ -336,6 +342,10 @@ private fun PedidoExtraordinarioVisualCard(
     onNombreArticuloExtraChange: (String) -> Unit,
     cantidadExtra: String,
     onCantidadExtraChange: (String) -> Unit,
+    itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
+    onAgregarExtraordinario: () -> Unit,
+    onQuitarExtraordinario: (Int) -> Unit,
+    onConfirmarExtraordinario: () -> Unit,
 ) {
     Card(
         modifier = Modifier
@@ -355,6 +365,7 @@ private fun PedidoExtraordinarioVisualCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
+
             OutlinedTextField(
                 value = nombreArticuloExtra,
                 onValueChange = onNombreArticuloExtraChange,
@@ -371,6 +382,59 @@ private fun PedidoExtraordinarioVisualCard(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
+
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onAgregarExtraordinario,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Agregar")
+            }
+
+            if (itemsExtraordinarios.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 180.dp)
+                ) {
+                    items(itemsExtraordinarios.size, key = { index -> "extra-$index" }) { index ->
+                        val item = itemsExtraordinarios[index]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                item.nombre,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                item.cantidad.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            IconButton(onClick = { onQuitarExtraordinario(index) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar extraordinario")
+                            }
+                        }
+                        Divider()
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = onConfirmarExtraordinario,
+                enabled = itemsExtraordinarios.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar pedido extraordinario")
+            }
         }
     }
 }
@@ -486,6 +550,7 @@ fun PedidoEmpleadoScreen(
     var comentarioPedido by remember { mutableStateOf("") }
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
+    val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -600,7 +665,41 @@ fun PedidoEmpleadoScreen(
                         nombreArticuloExtra = articuloExtraordinario,
                         onNombreArticuloExtraChange = { articuloExtraordinario = it },
                         cantidadExtra = cantidadExtraordinaria,
-                        onCantidadExtraChange = { cantidadExtraordinaria = it }
+                        onCantidadExtraChange = { cantidadExtraordinaria = it },
+                        itemsExtraordinarios = pedidosExtraordinarios,
+                        onAgregarExtraordinario = {
+                            val nombre = articuloExtraordinario.trim()
+                            val cantidad = cantidadExtraordinaria.toIntOrNull()
+                            when {
+                                nombre.isBlank() -> {
+                                    scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
+                                }
+
+                                cantidad == null || cantidad <= 0 -> {
+                                    scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
+                                }
+
+                                else -> {
+                                    pedidosExtraordinarios.add(
+                                        ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad)
+                                    )
+                                    articuloExtraordinario = ""
+                                    cantidadExtraordinaria = ""
+                                }
+                            }
+                        },
+                        onQuitarExtraordinario = { index ->
+                            if (index in pedidosExtraordinarios.indices) {
+                                pedidosExtraordinarios.removeAt(index)
+                            }
+                        },
+                        onConfirmarExtraordinario = {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Pedido extraordinario listo (solo visual, pendiente Supabase)"
+                                )
+                            }
+                        }
                     )
                 }
 
