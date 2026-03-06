@@ -215,7 +215,7 @@ private fun CarritoTabContent(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Text("Carrito (${carrito.size})", style = MaterialTheme.typography.titleMedium)
+            Text("Carrito normal (${carrito.size})", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
             var editarProductoId by remember { mutableStateOf<String?>(null) }
@@ -326,6 +326,51 @@ private fun CarritoTabContent(
             ) {
                 Text("Confirmar pedido")
             }
+        }
+    }
+}
+
+@Composable
+private fun PedidoExtraordinarioVisualCard(
+    nombreArticuloExtra: String,
+    onNombreArticuloExtraChange: (String) -> Unit,
+    cantidadExtra: String,
+    onCantidadExtraChange: (String) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text("Pedido extraordinario", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Este bloque es visual para definir el flujo. Aún no se envía a Supabase.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = nombreArticuloExtra,
+                onValueChange = onNombreArticuloExtraChange,
+                label = { Text("Nombre de artículo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = cantidadExtra,
+                onValueChange = { input -> onCantidadExtraChange(input.filter { it.isDigit() }.take(4)) },
+                label = { Text("Cantidad") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
         }
     }
 }
@@ -516,10 +561,6 @@ fun PedidoEmpleadoScreen(
                         carrito = pedidoViewModel.carrito,
                         comentario = comentarioPedido,
                         onComentarioChange = { comentarioPedido = it },
-                        nombreArticuloExtra = articuloExtraordinario,
-                        onNombreArticuloExtraChange = { articuloExtraordinario = it },
-                        cantidadExtra = cantidadExtraordinaria,
-                        onCantidadExtraChange = { cantidadExtraordinaria = it },
                         onSumar = { id: String ->
                             val item = pedidoViewModel.carrito.find { it.producto.id == id }
                             if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
@@ -535,39 +576,13 @@ fun PedidoEmpleadoScreen(
                                 return@CarritoTabContent
                             }
 
-                            val cantidadExtra = cantidadExtraordinaria.toIntOrNull()
-                            if (articuloExtraordinario.isBlank() && !cantidadExtraordinaria.isBlank()) {
-                                scope.launch { snackbarHostState.showSnackbar("Completa el nombre del pedido extraordinario") }
-                                return@CarritoTabContent
-                            }
-
-                            if (articuloExtraordinario.isNotBlank() && (cantidadExtra == null || cantidadExtra <= 0)) {
-                                scope.launch { snackbarHostState.showSnackbar("La cantidad del pedido extraordinario debe ser mayor a 0") }
-                                return@CarritoTabContent
-                            }
-
-                            val comentarioFinal = buildString {
-                                if (comentarioPedido.isNotBlank()) {
-                                    append(comentarioPedido.trim())
-                                }
-                                if (articuloExtraordinario.isNotBlank() && cantidadExtra != null && cantidadExtra > 0) {
-                                    if (isNotBlank()) append("\n")
-                                    append("Pedido extraordinario: ")
-                                    append(articuloExtraordinario.trim())
-                                    append(" | Cantidad: ")
-                                    append(cantidadExtra)
-                                }
-                            }
-
                             val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
                             pedidoViewModel.confirmarPedido(
                                 userId = userId,
                                 email = emailUsuario,
-                                comentario = comentarioFinal,
+                                comentario = comentarioPedido.trim(),
                                 onOk = {
                                     comentarioPedido = ""
-                                    articuloExtraordinario = ""
-                                    cantidadExtraordinaria = ""
                                     scope.launch {
                                         snackbarHostState.showSnackbar("Pedido creado correctamente")
                                     }
@@ -577,6 +592,15 @@ fun PedidoEmpleadoScreen(
                                 }
                             )
                         }
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    PedidoExtraordinarioVisualCard(
+                        nombreArticuloExtra = articuloExtraordinario,
+                        onNombreArticuloExtraChange = { articuloExtraordinario = it },
+                        cantidadExtra = cantidadExtraordinaria,
+                        onCantidadExtraChange = { cantidadExtraordinaria = it }
                     )
                 }
 
