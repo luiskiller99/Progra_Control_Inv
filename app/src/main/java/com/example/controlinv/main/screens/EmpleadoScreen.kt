@@ -195,6 +195,10 @@ private fun CarritoTabContent(
     carrito: List<ItemCarrito>,
     comentario: String,
     onComentarioChange: (String) -> Unit,
+    nombreArticuloExtra: String,
+    onNombreArticuloExtraChange: (String) -> Unit,
+    cantidadExtra: String,
+    onCantidadExtraChange: (String) -> Unit,
     onSumar: (String) -> Unit,
     onRestar: (String) -> Unit,
     onEliminar: (String) -> Unit,
@@ -223,6 +227,26 @@ private fun CarritoTabContent(
                 label = { Text("Comentario del pedido") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 2
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text("Pedido extraordinario", style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(
+                value = nombreArticuloExtra,
+                onValueChange = onNombreArticuloExtraChange,
+                label = { Text("Nombre de artículo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = cantidadExtra,
+                onValueChange = { input -> onCantidadExtraChange(input.filter { it.isDigit() }.take(4)) },
+                label = { Text("Cantidad") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
             Spacer(Modifier.height(8.dp))
