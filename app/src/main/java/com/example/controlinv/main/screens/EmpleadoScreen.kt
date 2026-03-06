@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,9 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -39,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +60,17 @@ import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 
+private enum class EmpleadoTab {
+    CATALOGO,
+    CARRITO,
+    PEDIDOS
+}
+
+private data class ItemPedidoExtraordinarioUI(
+    val nombre: String,
+    val cantidad: Int
+)
+
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
         ?: item.extra1?.takeIf { it.isNotBlank() }
@@ -75,7 +85,6 @@ private fun resolverImagenProducto(item: Inventario): String? {
     return "$SUPABASE_URL/storage/v1/object/public/productos/$pathLimpio"
 }
 
-
 private fun idPedidoCorto(id: String): String {
     val soloDigitos = id.filter { it.isDigit() }
     return when {
@@ -86,72 +95,109 @@ private fun idPedidoCorto(id: String): String {
 }
 
 @Composable
-private fun MisPedidosDialog(
+private fun EmpleadoTabs(
+    tabSeleccionado: EmpleadoTab,
+    onTabChange: (EmpleadoTab) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+    ) {
+        TextButton(onClick = { onTabChange(EmpleadoTab.CATALOGO) }) {
+            Text(if (tabSeleccionado == EmpleadoTab.CATALOGO) "• Catálogo" else "Catálogo")
+        }
+        TextButton(onClick = { onTabChange(EmpleadoTab.CARRITO) }) {
+            Text(if (tabSeleccionado == EmpleadoTab.CARRITO) "• Carrito" else "Carrito")
+        }
+        TextButton(onClick = { onTabChange(EmpleadoTab.PEDIDOS) }) {
+            Text(if (tabSeleccionado == EmpleadoTab.PEDIDOS) "• Pedidos" else "Pedidos")
+        }
+    }
+}
+
+@Composable
+private fun PedidosTabContent(
     pedidos: List<MiPedidoUI>,
     cargando: Boolean,
     onRecargar: () -> Unit,
-    onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Mis pedidos", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = onRecargar) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar mis pedidos")
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Mis pedidos",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onRecargar) {
+                Icon(Icons.Default.Refresh, contentDescription = "Actualizar pedidos")
             }
-        },
-        text = {
-            if (cargando) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            } else if (pedidos.isEmpty()) {
-                Text("Aún no tienes pedidos.", style = MaterialTheme.typography.bodySmall)
-            } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
-                    items(pedidos, key = { it.id }) { pedido ->
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+        }
+
+        if (cargando) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+        }
+
+        if (!cargando && pedidos.isEmpty()) {
+            Text(
+                "Aún no tienes pedidos.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(8.dp)
+            )
+            return
+        }
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(pedidos, key = { it.id }) { pedido ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(
+                            "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (pedido.productos.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            pedido.productos.forEach { prod ->
+                                Text(
+                                    "• ${prod.cantidad} x ${prod.descripcion}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
+                        }
+
+                        if (pedido.comentario.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
                             Text(
-                                "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
+                                "Comentario: ${pedido.comentario}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
-                            if (pedido.productos.isNotEmpty()) {
-                                pedido.productos.forEach { prod ->
-                                    Text(
-                                        "• ${prod.cantidad} x ${prod.descripcion}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-
-                            if (pedido.comentario.isNotBlank()) {
-                                Text(
-                                    "Comentario: ${pedido.comentario}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Divider(modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
-    )
+    }
 }
 
 @Composable
-private fun CarritoResumen(
+private fun CarritoTabContent(
     carrito: List<ItemCarrito>,
     comentario: String,
     onComentarioChange: (String) -> Unit,
@@ -163,8 +209,7 @@ private fun CarritoResumen(
 ) {
     Card(
         modifier = Modifier
-             .fillMaxWidth()
-            .navigationBarsPadding()
+            .fillMaxWidth()
             .padding(8.dp)
     ) {
         Column(
@@ -191,7 +236,7 @@ private fun CarritoResumen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 180.dp)
+                    .heightIn(max = 240.dp)
             ) {
                 items(carrito, key = { it.producto.id ?: it.producto.codigo ?: "sin-id" }) { item ->
                     val productId = item.producto.id ?: return@items
@@ -224,8 +269,6 @@ private fun CarritoResumen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
             if (editarProductoId != null) {
                 AlertDialog(
                     onDismissRequest = { editarProductoId = null },
@@ -257,12 +300,155 @@ private fun CarritoResumen(
                 )
             }
 
+            Spacer(Modifier.height(10.dp))
             Button(
                 onClick = onConfirmar,
                 enabled = carrito.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Confirmar pedido")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PedidoExtraordinarioVisualCard(
+    nombreArticuloExtra: String,
+    onNombreArticuloExtraChange: (String) -> Unit,
+    cantidadExtra: String,
+    onCantidadExtraChange: (String) -> Unit,
+    itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
+    onAgregarExtraordinario: () -> Unit,
+    onQuitarExtraordinario: (Int) -> Unit,
+    onConfirmarExtraordinario: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text("Pedido extraordinario", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Este bloque es visual para definir el flujo. Aún no se envía a Supabase.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = nombreArticuloExtra,
+                onValueChange = onNombreArticuloExtraChange,
+                label = { Text("Nombre de artículo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = cantidadExtra,
+                onValueChange = { input -> onCantidadExtraChange(input.filter { it.isDigit() }.take(4)) },
+                label = { Text("Cantidad") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onAgregarExtraordinario,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Agregar")
+            }
+
+            if (itemsExtraordinarios.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 180.dp)
+                ) {
+                    items(itemsExtraordinarios.size, key = { index -> "extra-$index" }) { index ->
+                        val item = itemsExtraordinarios[index]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                item.nombre,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                item.cantidad.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            IconButton(onClick = { onQuitarExtraordinario(index) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar extraordinario")
+                            }
+                        }
+                        Divider()
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = onConfirmarExtraordinario,
+                enabled = itemsExtraordinarios.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar pedido extraordinario")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CatalogoTabContent(
+    textoBusqueda: String,
+    onTextoBusquedaChange: (String) -> Unit,
+    inventario: List<Inventario>,
+    onAgregarAlCarrito: (Inventario) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp)
+    ) {
+        Text(
+            text = "Catálogo de productos",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = textoBusqueda,
+            onValueChange = onTextoBusquedaChange,
+            label = { Text("Buscar producto") },
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(inventario, key = { it.id ?: "" }) { item ->
+                ProductoCard(
+                    item = item,
+                    onAgregar = { onAgregarAlCarrito(item) }
+                )
             }
         }
     }
@@ -286,7 +472,7 @@ private fun ProductoCard(
                 model = resolverImagenProducto(item) ?: R.drawable.placeholder_producto,
                 contentDescription = item.descripcion,
                 modifier = Modifier
-                     .size(64.dp)
+                    .size(64.dp)
                     .padding(end = 8.dp)
             )
 
@@ -335,9 +521,12 @@ fun PedidoEmpleadoScreen(
     onLogout: () -> Unit
 ) {
     val pedidoViewModel: PedidoViewModel = viewModel(factory = PedidoViewModelFactory(supabase))
+    var tabActual by remember { mutableStateOf(EmpleadoTab.CATALOGO) }
     var textoBusqueda by remember { mutableStateOf("") }
     var comentarioPedido by remember { mutableStateOf("") }
-    var mostrarMisPedidosDialog by remember { mutableStateOf(false) }
+    var articuloExtraordinario by remember { mutableStateOf("") }
+    var cantidadExtraordinaria by remember { mutableStateOf("") }
+    val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -347,61 +536,36 @@ fun PedidoEmpleadoScreen(
         pedidoViewModel.cargarMisPedidos(id)
     }
 
-    if (pedidoViewModel.cargando) {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
-    }
-
     val userId = supabase.auth.currentUserOrNull()?.id
+
+    LaunchedEffect(tabActual, userId) {
+        if (tabActual == EmpleadoTab.PEDIDOS) {
+            pedidoViewModel.cargarMisPedidos(userId)
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Inventario") },
+                title = {
+                    Text(
+                        when (tabActual) {
+                            EmpleadoTab.CATALOGO -> "Catálogo"
+                            EmpleadoTab.CARRITO -> "Carrito"
+                            EmpleadoTab.PEDIDOS -> "Pedidos"
+                        }
+                    )
+                },
                 actions = {
-                    IconButton(onClick = {
-                        mostrarMisPedidosDialog = true
-                        pedidoViewModel.cargarMisPedidos(userId)
-                    }) {
-                        Icon(Icons.Default.List, contentDescription = "Mis pedidos")
+                    if (tabActual == EmpleadoTab.PEDIDOS) {
+                        IconButton(onClick = { pedidoViewModel.cargarMisPedidos(userId) }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualizar pedidos")
+                        }
                     }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
                     }
-                }
-            )
-        },
-        bottomBar = {
-            CarritoResumen(
-                carrito = pedidoViewModel.carrito,
-                comentario = comentarioPedido,
-                onComentarioChange = { comentarioPedido = it },
-                onSumar = { id: String ->
-                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                    if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
-                },
-                onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
-                onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
-                onActualizarCantidad = { id: String, cantidad: Int ->
-                    pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
-                },
-                onConfirmar = {
-                    if (userId == null) {
-                        scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
-                        return@CarritoResumen
-                    }
-
-                    val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-                    pedidoViewModel.confirmarPedido(
-                        userId = userId,
-                        email = emailUsuario,
-                        comentario = comentarioPedido,
-                        onOk = {
-                            comentarioPedido = ""
-                            scope.launch { snackbarHostState.showSnackbar("Pedido creado correctamente") }
-                        },
-                        onError = { error -> scope.launch { snackbarHostState.showSnackbar(error) } }
-                    )
                 }
             )
         }
@@ -411,48 +575,117 @@ fun PedidoEmpleadoScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            Text(
-                text = "Catálogo de productos",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            IconButton(onClick = {
-                mostrarMisPedidosDialog = true
-                pedidoViewModel.cargarMisPedidos(userId)
-            }) {
-                Icon(Icons.Default.List, contentDescription = "Mis pedidos")
+            if (pedidoViewModel.cargando) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
             }
 
-            OutlinedTextField(
-                value = textoBusqueda,
-                onValueChange = { texto ->
-                    textoBusqueda = texto
-                    pedidoViewModel.filtrarInventario(texto)
-                },
-                label = { Text("Buscar producto") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+            EmpleadoTabs(
+                tabSeleccionado = tabActual,
+                onTabChange = { tabActual = it }
             )
 
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(pedidoViewModel.inventario, key = { it.id ?: "" }) { item ->
-                    ProductoCard(
-                        item = item,
-                        onAgregar = { pedidoViewModel.agregarAlCarrito(item, 1) }
+            when (tabActual) {
+                EmpleadoTab.CATALOGO -> {
+                    CatalogoTabContent(
+                        textoBusqueda = textoBusqueda,
+                        onTextoBusquedaChange = { texto ->
+                            textoBusqueda = texto
+                            pedidoViewModel.filtrarInventario(texto)
+                        },
+                        inventario = pedidoViewModel.inventario,
+                        onAgregarAlCarrito = { pedidoViewModel.agregarAlCarrito(it, 1) }
                     )
                 }
-            }
 
-            if (mostrarMisPedidosDialog) {
-                MisPedidosDialog(
-                    pedidos = pedidoViewModel.misPedidos,
-                    cargando = pedidoViewModel.cargandoMisPedidos,
-                    onRecargar = { pedidoViewModel.cargarMisPedidos(userId) },
-                    onDismiss = { mostrarMisPedidosDialog = false }
-                )
+                EmpleadoTab.CARRITO -> {
+                    CarritoTabContent(
+                        carrito = pedidoViewModel.carrito,
+                        comentario = comentarioPedido,
+                        onComentarioChange = { comentarioPedido = it },
+                        onSumar = { id: String ->
+                            val item = pedidoViewModel.carrito.find { it.producto.id == id }
+                            if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
+                        },
+                        onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
+                        onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
+                        onActualizarCantidad = { id: String, cantidad: Int ->
+                            pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
+                        },
+                        onConfirmar = {
+                            if (userId == null) {
+                                scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
+                                return@CarritoTabContent
+                            }
+
+                            val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                            pedidoViewModel.confirmarPedido(
+                                userId = userId,
+                                email = emailUsuario,
+                                comentario = comentarioPedido,
+                                onOk = {
+                                    comentarioPedido = ""
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Pedido creado correctamente")
+                                    }
+                                },
+                                onError = { error ->
+                                    scope.launch { snackbarHostState.showSnackbar(error) }
+                                }
+                            )
+                        }
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    PedidoExtraordinarioVisualCard(
+                        nombreArticuloExtra = articuloExtraordinario,
+                        onNombreArticuloExtraChange = { articuloExtraordinario = it },
+                        cantidadExtra = cantidadExtraordinaria,
+                        onCantidadExtraChange = { cantidadExtraordinaria = it },
+                        itemsExtraordinarios = pedidosExtraordinarios,
+                        onAgregarExtraordinario = {
+                            val nombre = articuloExtraordinario.trim()
+                            val cantidad = cantidadExtraordinaria.toIntOrNull()
+                            when {
+                                nombre.isBlank() -> {
+                                    scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
+                                }
+
+                                cantidad == null || cantidad <= 0 -> {
+                                    scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
+                                }
+
+                                else -> {
+                                    pedidosExtraordinarios.add(
+                                        ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad)
+                                    )
+                                    articuloExtraordinario = ""
+                                    cantidadExtraordinaria = ""
+                                }
+                            }
+                        },
+                        onQuitarExtraordinario = { index ->
+                            if (index in pedidosExtraordinarios.indices) {
+                                pedidosExtraordinarios.removeAt(index)
+                            }
+                        },
+                        onConfirmarExtraordinario = {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Pedido extraordinario listo (solo visual, pendiente Supabase)"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                EmpleadoTab.PEDIDOS -> {
+                    PedidosTabContent(
+                        pedidos = pedidoViewModel.misPedidos,
+                        cargando = pedidoViewModel.cargandoMisPedidos,
+                        onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
+                    )
+                }
             }
         }
     }
