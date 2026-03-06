@@ -580,7 +580,7 @@ fun PedidoEmpleadoScreen(
                             pedidoViewModel.confirmarPedido(
                                 userId = userId,
                                 email = emailUsuario,
-                                comentario = comentarioPedido.trim(),
+                                comentario = comentarioPedido,
                                 onOk = {
                                     comentarioPedido = ""
                                     scope.launch {
