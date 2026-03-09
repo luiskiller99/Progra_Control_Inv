@@ -172,6 +172,16 @@ private fun PedidosTabContent(
                             Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
                             Spacer(Modifier.width(8.dp))
                             Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+                            val etiquetaExtraordinaria = pedido.comentario
+                                .takeIf { it.startsWith(PEDIDO_EXTRAORDINARIO_PREFIJO, ignoreCase = true) }
+                            if (!etiquetaExtraordinaria.isNullOrBlank()) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    etiquetaExtraordinaria,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         Text(
                             "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
@@ -747,3 +757,4 @@ fun PedidoEmpleadoScreen(
         }
     }
 }
+private const val PEDIDO_EXTRAORDINARIO_PREFIJO = "PEDIDO EXTRAORDINARIO"
