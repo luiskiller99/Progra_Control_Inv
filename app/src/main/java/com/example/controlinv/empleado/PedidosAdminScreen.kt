@@ -321,11 +321,23 @@ fun PedidoItem(
             //Text("* ${pedido.productos} *", style = MaterialTheme.typography.labelMedium)
 
 
-            pedido.productos.forEach { productoTexto ->
+            if (pedido.productos.isEmpty()) {
                 Text(
-                    text = "• $productoTexto • ",
-                    style = MaterialTheme.typography.bodySmall
+                    text = if (pedido.esExtraordinario) {
+                        "• Sin detalle de artículos extraordinarios •"
+                    } else {
+                        "• Sin detalle de productos •"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            } else {
+                pedido.productos.forEach { productoTexto ->
+                    Text(
+                        text = "• $productoTexto • ",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
 

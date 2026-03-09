@@ -52,8 +52,12 @@ data class PedidoExtraordinario(
 @Serializable
 data class DetallePedidoExtraordinario(
     val pedido_extraordinario_id: String,
-    val nombre: String,
-    val cantidad: Int
+    val nombre: String? = null,
+    val descripcion: String? = null,
+    val articulo: String? = null,
+    val producto: String? = null,
+    val cantidad: Int? = null,
+    val cantidad_solicitada: Int? = null
 )
 
 class PedidoAdminViewModel : ViewModel() {
@@ -135,7 +139,14 @@ class PedidoAdminViewModel : ViewModel() {
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { det ->
-                                "${det.cantidad} x [N/A] ${det.nombre}"
+                                val nombreItem = listOf(
+                                    det.nombre,
+                                    det.descripcion,
+                                    det.articulo,
+                                    det.producto
+                                ).firstOrNull { !it.isNullOrBlank() } ?: "Artículo extraordinario"
+                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
+                                "${cantidadItem} x [N/A] $nombreItem"
                             }
 
                         PedidoUI(
