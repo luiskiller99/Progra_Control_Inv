@@ -100,10 +100,7 @@ begin
     raise exception 'Prioridad inválida';
   end if;
 
-  v_comentario := nullif(trim(coalesce(p_comentario, '')), '');
-  if v_comentario is null then
-    v_comentario := 'PEDIDO EXTRAORDINARIO PRIORIDAD ' || v_prioridad;
-  end if;
+  v_comentario := trim(coalesce(p_comentario, ''));
 
   insert into public.pedidos_extraordinarios (
     empleado_id,
