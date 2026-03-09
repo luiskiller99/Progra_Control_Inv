@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.inventario.model.Inventario
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,10 +51,17 @@ data class PedidoExtraordinario(
 
 @Serializable
 data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String,
-    val nombre: String,
-    val cantidad: Int
+    val pedido_extraordinario_id: String? = null,
+    val pedido_id: String? = null,
+    val nombre: String? = null,
+    val cantidad: Int? = null,
+    val cantidad_solicitada: Int? = null
 )
+
+private fun normalizarIdPedidoExtra(id: String?): String? {
+    val limpio = id?.trim()?.lowercase().orEmpty()
+    return limpio.ifBlank { null }
+}
 
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
@@ -76,10 +84,14 @@ class PedidoAdminViewModel : ViewModel() {
                     .select()
                     .decodeList<Pedido>()
 
-                val pedidosExtraordinarios = supabase
-                    .from("pedidos_extraordinarios")
-                    .select()
-                    .decodeList<PedidoExtraordinario>()
+                val pedidosExtraordinarios = runCatching {
+                    supabase
+                        .from("pedidos_extraordinarios")
+                        .select()
+                        .decodeList<PedidoExtraordinario>()
+                }.onFailure {
+                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer pedidos extraordinarios", it)
+                }.getOrDefault(emptyList())
 
                 val detalles = supabase
                     .from("pedido_detalle")
@@ -87,11 +99,20 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = supabase
-                    .from("pedido_extraordinario_detalle")
-                    .select()
-                    .decodeList<DetallePedidoExtraordinario>()
-                    .groupBy { it.pedido_extraordinario_id }
+                val detallesExtraordinarios = runCatching {
+                    supabase
+                        .from("pedido_extraordinario_detalle")
+                        .select()
+                        .decodeList<DetallePedidoExtraordinario>()
+                        .groupBy { det ->
+                            normalizarIdPedidoExtra(det.pedido_extraordinario_id)
+                                ?: normalizarIdPedidoExtra(det.pedido_id)
+                                ?: ""
+                        }
+                        .filterKeys { it.isNotBlank() }
+                }.onFailure {
+                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
+                }.getOrDefault(emptyMap())
 
                 val inventario = supabase
                     .from("inventario")
@@ -123,10 +144,15 @@ class PedidoAdminViewModel : ViewModel() {
                 val pedidosExtraordinariosUI = pedidosExtraordinarios
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
-                        val productos = detallesExtraordinarios[pedido.id]
+                        val pedidoKey = normalizarIdPedidoExtra(pedido.id)
+                        val productos = detallesExtraordinarios[pedidoKey]
                             .orEmpty()
                             .map { det ->
-                                "${det.cantidad} x [N/A] ${det.nombre}"
+                                val nombreItem = det.nombre
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: "Artículo extraordinario"
+                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
+                                "${cantidadItem} x $nombreItem"
                             }
 
                         PedidoUI(
@@ -151,13 +177,22 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-    fun aceptarPedido(pedidoId: String) {
+    fun aceptarPedido(pedidoId: String, esExtraordinario: Boolean) {
         viewModelScope.launch {
             try {
-                supabase.postgrest.rpc(
-                    "aceptar_pedido",
-                    mapOf("p_pedido_id" to pedidoId)
-                )
+                if (esExtraordinario) {
+                    supabase
+                        .from("pedidos_extraordinarios")
+                        .update(mapOf("estado" to "ACEPTADO")) {
+                            filter { eq("id", pedidoId) }
+                            select(Columns.list("id"))
+                        }
+                } else {
+                    supabase.postgrest.rpc(
+                        "aceptar_pedido",
+                        mapOf("p_pedido_id" to pedidoId)
+                    )
+                }
                 cargarPedidos()
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error aceptando pedido", e)
@@ -165,13 +200,22 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-    fun rechazarPedido(pedidoId: String) {
+    fun rechazarPedido(pedidoId: String, esExtraordinario: Boolean) {
         viewModelScope.launch {
             try {
-                supabase.postgrest.rpc(
-                    "rechazar_pedido",
-                    mapOf("p_pedido_id" to pedidoId)
-                )
+                if (esExtraordinario) {
+                    supabase
+                        .from("pedidos_extraordinarios")
+                        .update(mapOf("estado" to "RECHAZADO")) {
+                            filter { eq("id", pedidoId) }
+                            select(Columns.list("id"))
+                        }
+                } else {
+                    supabase.postgrest.rpc(
+                        "rechazar_pedido",
+                        mapOf("p_pedido_id" to pedidoId)
+                    )
+                }
                 cargarPedidos()
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error rechazando pedido", e)
