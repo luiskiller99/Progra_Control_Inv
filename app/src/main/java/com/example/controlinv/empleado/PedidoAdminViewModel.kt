@@ -51,11 +51,9 @@ data class PedidoExtraordinario(
 
 @Serializable
 data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String,
+    val pedido_extraordinario_id: String? = null,
+    val pedido_id: String? = null,
     val nombre: String? = null,
-    val descripcion: String? = null,
-    val articulo: String? = null,
-    val producto: String? = null,
     val cantidad: Int? = null,
     val cantidad_solicitada: Int? = null
 )
@@ -101,7 +99,8 @@ class PedidoAdminViewModel : ViewModel() {
                         .from("pedido_extraordinario_detalle")
                         .select()
                         .decodeList<DetallePedidoExtraordinario>()
-                        .groupBy { it.pedido_extraordinario_id }
+                        .groupBy { it.pedido_extraordinario_id ?: it.pedido_id ?: "" }
+                        .filterKeys { it.isNotBlank() }
                 }.onFailure {
                     Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
                 }.getOrDefault(emptyMap())
@@ -139,14 +138,11 @@ class PedidoAdminViewModel : ViewModel() {
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { det ->
-                                val nombreItem = listOf(
-                                    det.nombre,
-                                    det.descripcion,
-                                    det.articulo,
-                                    det.producto
-                                ).firstOrNull { !it.isNullOrBlank() } ?: "Artículo extraordinario"
+                                val nombreItem = det.nombre
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: "Artículo extraordinario"
                                 val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
-                                "${cantidadItem} x [N/A] $nombreItem"
+                                "${cantidadItem} x $nombreItem"
                             }
 
                         PedidoUI(
