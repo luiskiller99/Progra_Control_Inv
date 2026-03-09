@@ -329,6 +329,8 @@ private fun PedidoExtraordinarioVisualCard(
     onCantidadExtraChange: (String) -> Unit,
     prioridad: PrioridadExtraordinaria,
     onPrioridadChange: (PrioridadExtraordinaria) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
@@ -553,6 +555,7 @@ fun PedidoEmpleadoScreen(
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
     var prioridadExtraordinaria by remember { mutableStateOf(PrioridadExtraordinaria.ALTA) }
+    var comentarioExtraordinario by remember { mutableStateOf("") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -675,6 +678,8 @@ fun PedidoEmpleadoScreen(
                                 onCantidadExtraChange = { cantidadExtraordinaria = it },
                                 prioridad = prioridadExtraordinaria,
                                 onPrioridadChange = { prioridadExtraordinaria = it },
+                                comentarioExtra = comentarioExtraordinario,
+                                onComentarioExtraChange = { comentarioExtraordinario = it },
                                 itemsExtraordinarios = pedidosExtraordinarios,
                                 onAgregarExtraordinario = {
                                     val nombre = articuloExtraordinario.trim()
@@ -717,12 +722,14 @@ fun PedidoEmpleadoScreen(
                                         userId = userId,
                                         email = emailUsuario,
                                         prioridad = prioridadExtraordinaria.etiqueta,
+                                        comentario = comentarioExtraordinario,
                                         items = items,
                                         onOk = {
                                             pedidosExtraordinarios.clear()
                                             articuloExtraordinario = ""
                                             cantidadExtraordinaria = ""
                                             prioridadExtraordinaria = PrioridadExtraordinaria.ALTA
+                                            comentarioExtraordinario = ""
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("Pedido extraordinario enviado correctamente")
                                             }
