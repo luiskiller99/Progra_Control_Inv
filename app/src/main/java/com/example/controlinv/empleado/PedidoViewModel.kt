@@ -45,6 +45,23 @@ data class MiPedidoUI(
     val productos: List<ProductoPedidoUI>
 )
 
+@kotlinx.serialization.Serializable
+data class PedidoExtraordinarioEmpleado(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val empleado_id: String,
+    val comentario: String,
+    val prioridad: String
+)
+
+@kotlinx.serialization.Serializable
+data class DetallePedidoExtraordinarioEmpleado(
+    val pedido_extraordinario_id: String,
+    val nombre: String,
+    val cantidad: Int
+)
+
 data class ItemExtraordinarioRequest(
     val nombre: String,
     val cantidad: Int
@@ -364,11 +381,24 @@ class PedidoViewModel(
                     }
                     .decodeList<Pedido>()
 
+                val pedidosExtraordinarios = supabase
+                    .from("pedidos_extraordinarios")
+                    .select {
+                        filter { eq("empleado_id", userId) }
+                    }
+                    .decodeList<PedidoExtraordinarioEmpleado>()
+
                 val detalles = supabase
                     .from("pedido_detalle")
                     .select()
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
+
+                val detallesExtraordinarios = supabase
+                    .from("pedido_extraordinario_detalle")
+                    .select()
+                    .decodeList<DetallePedidoExtraordinarioEmpleado>()
+                    .groupBy { it.pedido_extraordinario_id }
 
                 val inventarioPorId = supabase
                     .from("inventario")
@@ -376,7 +406,7 @@ class PedidoViewModel(
                     .decodeList<Inventario>()
                     .associateBy { it.id }
 
-                misPedidos = pedidos
+                val pedidosNormalesUI = pedidos
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
                         val productos = detalles[pedido.id]
@@ -398,6 +428,30 @@ class PedidoViewModel(
                             productos = productos
                         )
                     }
+
+                val pedidosExtraordinariosUI = pedidosExtraordinarios
+                    .sortedByDescending { it.fecha }
+                    .map { pedido ->
+                        val productos = detallesExtraordinarios[pedido.id]
+                            .orEmpty()
+                            .map { det ->
+                                ProductoPedidoUI(
+                                    descripcion = det.nombre,
+                                    cantidad = det.cantidad
+                                )
+                            }
+
+                        MiPedidoUI(
+                            id = pedido.id,
+                            fecha = pedido.fecha,
+                            estado = pedido.estado,
+                            comentario = pedido.comentario,
+                            productos = productos
+                        )
+                    }
+
+                misPedidos = (pedidosNormalesUI + pedidosExtraordinariosUI)
+                    .sortedByDescending { it.fecha }
             } catch (e: Exception) {
                 Log.e("PEDIDO", "Error cargando mis pedidos", e)
             } finally {

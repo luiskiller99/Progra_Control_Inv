@@ -23,7 +23,8 @@ data class PedidoUI(
     val fecha: String,
     val estado: String,
     val comentario: String,
-    val productos: List<String>
+    val productos: List<String>,
+    val esExtraordinario: Boolean = false
 )
 
 @Serializable
@@ -34,6 +35,24 @@ data class Pedido(
     val empleado_id: String,
     val empleado_email: String? = null,
     val comentario: String? = null
+)
+
+@Serializable
+data class PedidoExtraordinario(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val empleado_id: String,
+    val empleado_email: String,
+    val prioridad: String,
+    val comentario: String
+)
+
+@Serializable
+data class DetallePedidoExtraordinario(
+    val pedido_extraordinario_id: String,
+    val nombre: String,
+    val cantidad: Int
 )
 
 class PedidoAdminViewModel : ViewModel() {
@@ -57,11 +76,22 @@ class PedidoAdminViewModel : ViewModel() {
                     .select()
                     .decodeList<Pedido>()
 
+                val pedidosExtraordinarios = supabase
+                    .from("pedidos_extraordinarios")
+                    .select()
+                    .decodeList<PedidoExtraordinario>()
+
                 val detalles = supabase
                     .from("pedido_detalle")
                     .select()
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
+
+                val detallesExtraordinarios = supabase
+                    .from("pedido_extraordinario_detalle")
+                    .select()
+                    .decodeList<DetallePedidoExtraordinario>()
+                    .groupBy { it.pedido_extraordinario_id }
 
                 val inventario = supabase
                     .from("inventario")
@@ -85,11 +115,34 @@ class PedidoAdminViewModel : ViewModel() {
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         comentario = pedido.comentario ?: "",
-                        productos = productos
+                        productos = productos,
+                        esExtraordinario = false
                     )
                 }
 
-                _listaPedidos.value = pedidosUI
+                val pedidosExtraordinariosUI = pedidosExtraordinarios
+                    .sortedByDescending { it.fecha }
+                    .map { pedido ->
+                        val productos = detallesExtraordinarios[pedido.id]
+                            .orEmpty()
+                            .map { det ->
+                                "${det.cantidad} x [N/A] ${det.nombre}"
+                            }
+
+                        PedidoUI(
+                            id = pedido.id,
+                            empleadoEmail = pedido.empleado_email,
+                            fecha = pedido.fecha,
+                            estado = pedido.estado,
+                            comentario = pedido.comentario,
+                            productos = productos,
+                            esExtraordinario = true
+                        )
+                    )
+                }
+
+                _listaPedidos.value = (pedidosUI + pedidosExtraordinariosUI)
+                    .sortedByDescending { it.fecha }
             } catch (e: Exception) {
                 Log.e("ADMIN_PEDIDOS", "Error cargando pedidos", e)
             } finally {
