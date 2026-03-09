@@ -386,13 +386,6 @@ private fun PedidoExtraordinarioVisualCard(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
-            Spacer(Modifier.height(6.dp))
-            OutlinedTextField(
-                value = comentarioExtra,
-                onValueChange = onComentarioExtraChange,
-                label = { Text("Comentario (opcional)") },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(Modifier.height(8.dp))
             Button(
