@@ -164,7 +164,7 @@ class PedidoAdminViewModel : ViewModel() {
                             productos = productos,
                             esExtraordinario = true
                         )
-                    )
+                    
                 }
 
                 _listaPedidos.value = (pedidosUI + pedidosExtraordinariosUI)
