@@ -77,10 +77,14 @@ class PedidoAdminViewModel : ViewModel() {
                     .select()
                     .decodeList<Pedido>()
 
-                val pedidosExtraordinarios = supabase
-                    .from("pedidos_extraordinarios")
-                    .select()
-                    .decodeList<PedidoExtraordinario>()
+                val pedidosExtraordinarios = runCatching {
+                    supabase
+                        .from("pedidos_extraordinarios")
+                        .select()
+                        .decodeList<PedidoExtraordinario>()
+                }.onFailure {
+                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer pedidos extraordinarios", it)
+                }.getOrDefault(emptyList())
 
                 val detalles = supabase
                     .from("pedido_detalle")
@@ -88,11 +92,15 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = supabase
-                    .from("pedido_extraordinario_detalle")
-                    .select()
-                    .decodeList<DetallePedidoExtraordinario>()
-                    .groupBy { it.pedido_extraordinario_id }
+                val detallesExtraordinarios = runCatching {
+                    supabase
+                        .from("pedido_extraordinario_detalle")
+                        .select()
+                        .decodeList<DetallePedidoExtraordinario>()
+                        .groupBy { it.pedido_extraordinario_id }
+                }.onFailure {
+                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
+                }.getOrDefault(emptyMap())
 
                 val inventario = supabase
                     .from("inventario")

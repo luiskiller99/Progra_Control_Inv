@@ -41,6 +41,13 @@ for select
 to authenticated
 using (empleado_id = auth.uid()::uuid);
 
+drop policy if exists "Auth can read all pedidos extraordinarios" on public.pedidos_extraordinarios;
+create policy "Auth can read all pedidos extraordinarios"
+on public.pedidos_extraordinarios
+for select
+to authenticated
+using (true);
+
 drop policy if exists "Auth can insert detalle extraordinario" on public.pedido_extraordinario_detalle;
 create policy "Auth can insert detalle extraordinario"
 on public.pedido_extraordinario_detalle
@@ -61,6 +68,13 @@ using (
       and pe.empleado_id = auth.uid()::uuid
   )
 );
+
+drop policy if exists "Auth can read all detalle extraordinario" on public.pedido_extraordinario_detalle;
+create policy "Auth can read all detalle extraordinario"
+on public.pedido_extraordinario_detalle
+for select
+to authenticated
+using (true);
 
 create or replace function public.crear_pedido_extraordinario(
   p_empleado_id uuid,
@@ -86,10 +100,7 @@ begin
     raise exception 'Prioridad inválida';
   end if;
 
-  v_comentario := nullif(trim(coalesce(p_comentario, '')), '');
-  if v_comentario is null then
-    v_comentario := 'PEDIDO EXTRAORDINARIO PRIORIDAD ' || v_prioridad;
-  end if;
+  v_comentario := trim(coalesce(p_comentario, ''));
 
   insert into public.pedidos_extraordinarios (
     empleado_id,

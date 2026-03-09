@@ -47,9 +47,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val PEDIDO_EXTRAORDINARIO_PREFIJO = "PEDIDO EXTRAORDINARIO"
-
-
 private fun idPedidoCorto(id: String?): String {
     if (id.isNullOrBlank()) return "000000"
     val soloDigitos = id.filter { it.isDigit() }
@@ -277,8 +274,6 @@ fun PedidoItem(
     val fechaCorta = pedido.fecha
         .replace("T", " ")
         .substring(0, 16)
-    val etiquetaExtraordinaria = pedido.comentario
-        .takeIf { it.startsWith(PEDIDO_EXTRAORDINARIO_PREFIJO, ignoreCase = true) }
 
     Card(
         modifier = Modifier
@@ -294,14 +289,6 @@ fun PedidoItem(
                     pedido.empleadoEmail ?: "Empleado desconocido",
                     style = MaterialTheme.typography.titleMedium
                 )
-                if (!etiquetaExtraordinaria.isNullOrBlank()) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        etiquetaExtraordinaria,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
             Text(
                 "ID: ${idPedidoCorto(pedido.id)}",

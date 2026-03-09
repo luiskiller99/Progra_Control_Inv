@@ -240,6 +240,7 @@ class PedidoViewModel(
         userId: String,
         email: String,
         prioridad: String,
+        comentario: String,
         items: List<ItemExtraordinarioRequest>,
         onOk: () -> Unit,
         onError: (String) -> Unit
@@ -276,7 +277,7 @@ class PedidoViewModel(
                             "p_empleado_id" to JsonPrimitive(userId),
                             "p_empleado_email" to JsonPrimitive(email),
                             "p_prioridad" to JsonPrimitive(prioridadLimpia),
-                            "p_comentario" to JsonPrimitive("PEDIDO EXTRAORDINARIO PRIORIDAD $prioridadLimpia"),
+                            "p_comentario" to if (comentario.isBlank()) JsonNull else JsonPrimitive(comentario),
                             "p_items" to itemsJson
                         )
                     )
