@@ -172,16 +172,6 @@ private fun PedidosTabContent(
                             Text("ID: ${idPedidoCorto(pedido.id)}", style = MaterialTheme.typography.labelSmall)
                             Spacer(Modifier.width(8.dp))
                             Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
-                            val etiquetaExtraordinaria = pedido.comentario
-                                .takeIf { it.startsWith(PEDIDO_EXTRAORDINARIO_PREFIJO, ignoreCase = true) }
-                            if (!etiquetaExtraordinaria.isNullOrBlank()) {
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    etiquetaExtraordinaria,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                         Text(
                             "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
@@ -339,6 +329,8 @@ private fun PedidoExtraordinarioVisualCard(
     onCantidadExtraChange: (String) -> Unit,
     prioridad: PrioridadExtraordinaria,
     onPrioridadChange: (PrioridadExtraordinaria) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
@@ -392,6 +384,14 @@ private fun PedidoExtraordinarioVisualCard(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = comentarioExtra,
+                onValueChange = onComentarioExtraChange,
+                label = { Text("Comentario (opcional)") },
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(8.dp))
@@ -562,6 +562,7 @@ fun PedidoEmpleadoScreen(
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
     var prioridadExtraordinaria by remember { mutableStateOf(PrioridadExtraordinaria.ALTA) }
+    var comentarioExtraordinario by remember { mutableStateOf("") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -684,6 +685,8 @@ fun PedidoEmpleadoScreen(
                                 onCantidadExtraChange = { cantidadExtraordinaria = it },
                                 prioridad = prioridadExtraordinaria,
                                 onPrioridadChange = { prioridadExtraordinaria = it },
+                                comentarioExtra = comentarioExtraordinario,
+                                onComentarioExtraChange = { comentarioExtraordinario = it },
                                 itemsExtraordinarios = pedidosExtraordinarios,
                                 onAgregarExtraordinario = {
                                     val nombre = articuloExtraordinario.trim()
@@ -726,12 +729,14 @@ fun PedidoEmpleadoScreen(
                                         userId = userId,
                                         email = emailUsuario,
                                         prioridad = prioridadExtraordinaria.etiqueta,
+                                        comentario = comentarioExtraordinario,
                                         items = items,
                                         onOk = {
                                             pedidosExtraordinarios.clear()
                                             articuloExtraordinario = ""
                                             cantidadExtraordinaria = ""
                                             prioridadExtraordinaria = PrioridadExtraordinaria.ALTA
+                                            comentarioExtraordinario = ""
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("Pedido extraordinario enviado correctamente")
                                             }
@@ -757,4 +762,3 @@ fun PedidoEmpleadoScreen(
         }
     }
 }
-private const val PEDIDO_EXTRAORDINARIO_PREFIJO = "PEDIDO EXTRAORDINARIO"

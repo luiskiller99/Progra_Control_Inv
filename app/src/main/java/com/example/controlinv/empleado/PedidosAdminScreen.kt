@@ -47,9 +47,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val PEDIDO_EXTRAORDINARIO_PREFIJO = "PEDIDO EXTRAORDINARIO"
-
-
 private fun idPedidoCorto(id: String?): String {
     if (id.isNullOrBlank()) return "000000"
     val soloDigitos = id.filter { it.isDigit() }
@@ -152,6 +149,16 @@ enum class PedidoFiltro {
     ACEPTADO,
     RECHAZADO
 }
+
+private fun PedidoUI.esPendiente(): Boolean =
+    estado.equals("ENVIADO", ignoreCase = true) || estado.equals("PENDIENTE", ignoreCase = true)
+
+private fun PedidoUI.esAceptado(): Boolean =
+    estado.equals("ACEPTADO", ignoreCase = true) || estado.equals("APROBADO", ignoreCase = true)
+
+private fun PedidoUI.esRechazado(): Boolean =
+    estado.equals("RECHAZADO", ignoreCase = true)
+
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
@@ -201,9 +208,9 @@ fun PedidosAdminScreen(
                     }
                 }
                 val pedidosFiltrados = when (filtro) {
-                    PedidoFiltro.ENVIADO -> pedidos.filter { it.estado.equals("ENVIADO", ignoreCase = true) }
-                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
-                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
+                    PedidoFiltro.ENVIADO -> pedidos.filter { it.esPendiente() }
+                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.esAceptado() }
+                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.esRechazado() }
                 }
 
                 if (pedidosFiltrados.isEmpty()) {
@@ -223,13 +230,19 @@ fun PedidosAdminScreen(
                                 pedido = pedido,
                                 mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
                                 onAceptar = {
-                                    if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
-                                        viewModel.aceptarPedido(pedido.id)
+                                    if (pedido.esPendiente()) {
+                                        viewModel.aceptarPedido(
+                                            pedidoId = pedido.id,
+                                            esExtraordinario = pedido.esExtraordinario
+                                        )
                                     }
                                 },
                                 onRechazar = {
-                                    if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
-                                        viewModel.rechazarPedido(pedido.id)
+                                    if (pedido.esPendiente()) {
+                                        viewModel.rechazarPedido(
+                                            pedidoId = pedido.id,
+                                            esExtraordinario = pedido.esExtraordinario
+                                        )
                                     }
                                 }
                             )
@@ -261,8 +274,6 @@ fun PedidoItem(
     val fechaCorta = pedido.fecha
         .replace("T", " ")
         .substring(0, 16)
-    val etiquetaExtraordinaria = pedido.comentario
-        .takeIf { it.startsWith(PEDIDO_EXTRAORDINARIO_PREFIJO, ignoreCase = true) }
 
     Card(
         modifier = Modifier
@@ -278,14 +289,6 @@ fun PedidoItem(
                     pedido.empleadoEmail ?: "Empleado desconocido",
                     style = MaterialTheme.typography.titleMedium
                 )
-                if (!etiquetaExtraordinaria.isNullOrBlank()) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        etiquetaExtraordinaria,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
             Text(
                 "ID: ${idPedidoCorto(pedido.id)}",
