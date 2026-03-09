@@ -45,6 +45,11 @@ data class MiPedidoUI(
     val productos: List<ProductoPedidoUI>
 )
 
+data class ItemExtraordinarioRequest(
+    val nombre: String,
+    val cantidad: Int
+)
+
 class PedidoViewModel(
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -91,8 +96,6 @@ class PedidoViewModel(
                 val productosJson = productos.joinToString(",") {
                     "\"${escapeJson(it)}\""
                 }
-                /**"emanuel.acuna@holcim.com" ,
-                "xavier.lezcanochavarria@holcim.com"*/
                 val payload = """
                     {
                       "to": [
@@ -212,6 +215,60 @@ class PedidoViewModel(
                     else -> "No se pudo crear el pedido: ${mensajeOriginal.ifBlank { "error desconocido" }}"
                 }
                 onError(mensajeUsuario)
+            }
+        }
+    }
+
+    fun confirmarPedidoExtraordinario(
+        userId: String,
+        email: String,
+        prioridad: String,
+        items: List<ItemExtraordinarioRequest>,
+        onOk: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val itemsValidos = items.filter { it.nombre.isNotBlank() && it.cantidad > 0 }
+                if (itemsValidos.isEmpty()) {
+                    onError("Agrega al menos un artículo extraordinario válido")
+                    return@launch
+                }
+
+                val prioridadLimpia = prioridad.trim().uppercase()
+                if (prioridadLimpia !in setOf("BAJA", "MEDIA", "ALTA")) {
+                    onError("Selecciona una prioridad válida")
+                    return@launch
+                }
+
+                val itemsJson = JsonArray(
+                    itemsValidos.map {
+                        JsonObject(
+                            mapOf(
+                                "nombre" to JsonPrimitive(it.nombre.trim()),
+                                "cantidad" to JsonPrimitive(it.cantidad)
+                            )
+                        )
+                    }
+                )
+
+                supabase.postgrest.rpc(
+                    function = "crear_pedido_extraordinario",
+                    parameters = JsonObject(
+                        mapOf(
+                            "p_empleado_id" to JsonPrimitive(userId),
+                            "p_empleado_email" to JsonPrimitive(email),
+                            "p_prioridad" to JsonPrimitive(prioridadLimpia),
+                            "p_comentario" to JsonPrimitive("PEDIDO EXTRAORDINARIO PRIORIDAD $prioridadLimpia"),
+                            "p_items" to itemsJson
+                        )
+                    )
+                )
+
+                onOk()
+            } catch (e: Exception) {
+                Log.e("PEDIDO_EXTRA", "Error creando pedido extraordinario", e)
+                onError("No se pudo crear el pedido extraordinario: ${e.message ?: "error desconocido"}")
             }
         }
     }
