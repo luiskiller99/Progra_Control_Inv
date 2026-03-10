@@ -122,25 +122,45 @@ class PedidoAdminViewModel : ViewModel() {
                     .groupBy { it.pedido_id }
 
                 val detallesExtraordinarios = runCatching {
-                    supabase
+                    val detallesRaw = supabase
                         .from("pedido_extraordinario_detalle")
                         .select()
                         .decodeList<JsonObject>()
+
+                    detallesRaw
                         .mapNotNull { raw ->
                             val pedidoId = normalizarIdPedidoExtra(
-                                raw.stringFrom("pedido_extraordinario_id", "pedido_id")
+                                raw.stringFrom(
+                                    "pedido_extraordinario_id",
+                                    "pedido_id",
+                                    "id_pedido_extraordinario"
+                                )
                             ) ?: return@mapNotNull null
 
                             DetallePedidoExtraordinario(
                                 pedido_extraordinario_id = pedidoId,
-                                nombre = raw.stringFrom("nombre", "articulo", "descripcion"),
-                                cantidad = raw.intFrom("cantidad", "cantidad_solicitada")
+                                nombre = raw.stringFrom(
+                                    "nombre",
+                                    "articulo",
+                                    "descripcion",
+                                    "producto",
+                                    "detalle"
+                                ),
+                                cantidad = raw.intFrom("cantidad", "cantidad_solicitada", "cant")
                             )
                         }
                         .groupBy { it.pedido_extraordinario_id.orEmpty() }
+                        .filterKeys { it.isNotBlank() }
                 }.onFailure {
                     Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
                 }.getOrDefault(emptyMap())
+
+                if (pedidosExtraordinarios.isNotEmpty() && detallesExtraordinarios.isEmpty()) {
+                    Log.w(
+                        "ADMIN_PEDIDOS",
+                        "Pedidos extraordinarios cargados sin detalle. Posible RLS/política SELECT en pedido_extraordinario_detalle"
+                    )
+                }
 
                 val inventario = supabase
                     .from("inventario")
