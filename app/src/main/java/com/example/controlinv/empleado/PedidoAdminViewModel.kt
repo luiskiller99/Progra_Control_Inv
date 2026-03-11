@@ -51,17 +51,10 @@ data class PedidoExtraordinario(
 
 @Serializable
 data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String? = null,
-    val pedido_id: String? = null,
-    val nombre: String? = null,
-    val cantidad: Int? = null,
-    val cantidad_solicitada: Int? = null
+    val pedido_extraordinario_id: String,
+    val nombre: String,
+    val cantidad: Int
 )
-
-private fun normalizarIdPedidoExtra(id: String?): String? {
-    val limpio = id?.trim()?.lowercase().orEmpty()
-    return limpio.ifBlank { null }
-}
 
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
@@ -99,21 +92,6 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = runCatching {
-                    supabase
-                        .from("pedido_extraordinario_detalle")
-                        .select()
-                        .decodeList<DetallePedidoExtraordinario>()
-                        .groupBy { det ->
-                            normalizarIdPedidoExtra(det.pedido_extraordinario_id)
-                                ?: normalizarIdPedidoExtra(det.pedido_id)
-                                ?: ""
-                        }
-                        .filterKeys { it.isNotBlank() }
-                }.onFailure {
-                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
-                }.getOrDefault(emptyMap())
-
                 val inventario = supabase
                     .from("inventario")
                     .select()
@@ -144,16 +122,23 @@ class PedidoAdminViewModel : ViewModel() {
                 val pedidosExtraordinariosUI = pedidosExtraordinarios
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
-                        val pedidoKey = normalizarIdPedidoExtra(pedido.id)
-                        val productos = detallesExtraordinarios[pedidoKey]
-                            .orEmpty()
-                            .map { det ->
-                                val nombreItem = det.nombre
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: "Artículo extraordinario"
-                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
-                                "${cantidadItem} x $nombreItem"
-                            }
+                        val productos = runCatching {
+                            supabase
+                                .from("pedido_extraordinario_detalle")
+                                .select {
+                                    filter { eq("pedido_extraordinario_id", pedido.id) }
+                                }
+                                .decodeList<DetallePedidoExtraordinario>()
+                                .map { det ->
+                                    "${det.cantidad} x ${det.nombre}"
+                                }
+                        }.onFailure {
+                            Log.e(
+                                "ADMIN_PEDIDOS",
+                                "No se pudo leer detalle extraordinario de pedido ${pedido.id}",
+                                it
+                            )
+                        }.getOrDefault(emptyList())
 
                         PedidoUI(
                             id = pedido.id,
