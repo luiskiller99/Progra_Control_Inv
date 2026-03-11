@@ -181,10 +181,23 @@ private fun PedidosTabContent(
                             }
                         }
 
+                        if (pedido.esExtraordinario) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Tipo: Extraordinario",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
                         if (pedido.comentario.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Comentario: ${pedido.comentario}",
+                                if (pedido.esExtraordinario) {
+                                    "Prioridad: ${pedido.comentario}"
+                                } else {
+                                    "Comentario: ${pedido.comentario}"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
