@@ -116,9 +116,9 @@ class PedidoAdminViewModel : ViewModel() {
                         .from("pedido_extraordinario_detalle")
                         .select()
                         .decodeList<JsonObject>()
-                        .groupBy { json ->
-                            json.stringOrNull("pedido_extraordinario_id")
-                                ?: json.stringOrNull("pedido_id")
+                        .groupBy { detalle ->
+                            detalle.stringOrNull("pedido_extraordinario_id")
+                                ?: detalle.stringOrNull("pedido_id")
                                 ?: ""
                         }
                 }.getOrElse {
