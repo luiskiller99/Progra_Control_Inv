@@ -1,6 +1,5 @@
 package com.example.controlinv.empleado
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -32,10 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-private enum class ExtraordinarioFiltro {
-    PENDIENTE,
-    ACEPTADO,
-    RECHAZADO
+private enum class ExtraordinarioFiltro { PENDIENTE, ACEPTADO, RECHAZADO }
+
+
+private fun idPedidoCortoExtra(id: String?): String {
+    if (id.isNullOrBlank()) return "000000"
+    val soloDigitos = id.filter { it.isDigit() }
+    if (soloDigitos.length >= 6) return soloDigitos.takeLast(6)
+    val hash6 = (id.hashCode().toLong() and 0xffffffffL) % 1_000_000L
+    return hash6.toString().padStart(6, '0')
 }
 
 private fun PedidoExtraordinarioUI.esPendiente(): Boolean =
@@ -44,161 +47,127 @@ private fun PedidoExtraordinarioUI.esPendiente(): Boolean =
 private fun PedidoExtraordinarioUI.esAceptado(): Boolean =
     estado.equals("ACEPTADO", ignoreCase = true) || estado.equals("APROBADO", ignoreCase = true)
 
-private fun PedidoExtraordinarioUI.esRechazado(): Boolean =
-    estado.equals("RECHAZADO", ignoreCase = true)
+private fun PedidoExtraordinarioUI.esRechazado(): Boolean = estado.equals("RECHAZADO", ignoreCase = true)
 
 @Composable
 fun PedidosExtraordinariosAdminScreen(
     viewModel: PedidoExtraordinarioAdminViewModel = viewModel()
 ) {
+    PedidosExtraordinariosAdminContent(viewModel)
+}
+
+@Composable
+fun PedidosExtraordinariosAdminContent(
+    viewModel: PedidoExtraordinarioAdminViewModel = viewModel()
+) {
     val pedidos by viewModel.listaPedidos.collectAsState()
     var filtro by remember { mutableStateOf(ExtraordinarioFiltro.PENDIENTE) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (viewModel.cargando) {
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
+    if (viewModel.cargando) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+    }
+
+    if (pedidos.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No hay pedidos extraordinarios")
+        }
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+        Row {
+            TextButton(onClick = { filtro = ExtraordinarioFiltro.PENDIENTE }) { Text("Pendientes") }
+            TextButton(onClick = { filtro = ExtraordinarioFiltro.ACEPTADO }) { Text("Aceptados") }
+            TextButton(onClick = { filtro = ExtraordinarioFiltro.RECHAZADO }) { Text("Rechazados") }
         }
 
-        if (pedidos.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay pedidos extraordinarios")
+        val pedidosFiltrados = when (filtro) {
+            ExtraordinarioFiltro.PENDIENTE -> pedidos.filter { it.esPendiente() }
+            ExtraordinarioFiltro.ACEPTADO -> pedidos.filter { it.esAceptado() }
+            ExtraordinarioFiltro.RECHAZADO -> pedidos.filter { it.esRechazado() }
+        }
+
+        if (pedidosFiltrados.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No hay pedidos extraordinarios para este filtro")
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(onClick = { filtro = ExtraordinarioFiltro.PENDIENTE }) {
-                        Text("Pendientes")
-                    }
-                    TextButton(onClick = { filtro = ExtraordinarioFiltro.ACEPTADO }) {
-                        Text("Aceptados")
-                    }
-                    TextButton(onClick = { filtro = ExtraordinarioFiltro.RECHAZADO }) {
-                        Text("Rechazados")
-                    }
-                }
+            return@Column
+        }
 
-                val pedidosFiltrados = when (filtro) {
-                    ExtraordinarioFiltro.PENDIENTE -> pedidos.filter { it.esPendiente() }
-                    ExtraordinarioFiltro.ACEPTADO -> pedidos.filter { it.esAceptado() }
-                    ExtraordinarioFiltro.RECHAZADO -> pedidos.filter { it.esRechazado() }
-                }
-
-                if (pedidosFiltrados.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No hay pedidos extraordinarios para este filtro")
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(pedidosFiltrados, key = { it.id }) { pedido ->
-                            PedidoExtraordinarioItem(
-                                pedido = pedido,
-                                mostrarAcciones = filtro == ExtraordinarioFiltro.PENDIENTE,
-                                onAceptar = { if (pedido.esPendiente()) viewModel.aceptarPedido(pedido.id) },
-                                onRechazar = { if (pedido.esPendiente()) viewModel.rechazarPedido(pedido.id) }
-                            )
-                        }
-                    }
-                }
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(pedidosFiltrados, key = { it.id }) { pedido ->
+                val pedidoUI = MiPedidoUI(
+                    id = pedido.id,
+                    fecha = pedido.fecha,
+                    estado = pedido.estado,
+                    comentario = pedido.comentario,
+                    productos = pedido.productos
+                )
+                PedidoExtraordinarioAdminItem(
+                    pedido = pedidoUI,
+                    mostrarAcciones = filtro == ExtraordinarioFiltro.PENDIENTE,
+                    onAceptar = { if (pedido.esPendiente()) viewModel.aceptarPedido(pedido.id) },
+                    onRechazar = { if (pedido.esPendiente()) viewModel.rechazarPedido(pedido.id) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PedidoExtraordinarioItem(
-    pedido: PedidoExtraordinarioUI,
+private fun PedidoExtraordinarioAdminItem(
+    pedido: MiPedidoUI,
     mostrarAcciones: Boolean,
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
 ) {
-    val fechaCorta = pedido.fecha.replace("T", " ").take(16)
-
     Card(
         modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .fillMaxWidth()
+            .padding(vertical = 5.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("ID: ${idPedidoCortoExtra(pedido.id)}", style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(8.dp))
+                Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
+            }
             Text(
-                pedido.empleadoEmail.ifBlank { "Empleado desconocido" },
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                "ID: ${pedido.id.take(8)}",
+                "Fecha: ${pedido.fecha.replace("T", " ").take(16)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(Modifier.height(4.dp))
-
-            Text("Fecha: $fechaCorta", style = MaterialTheme.typography.bodySmall)
-            Text("Estado: ${pedido.estado}", style = MaterialTheme.typography.bodySmall)
-            Text("Prioridad: ${pedido.prioridad}", style = MaterialTheme.typography.bodySmall)
-
-            if (pedido.comentario.isNotBlank()) {
-                Text("Comentario: ${pedido.comentario}", style = MaterialTheme.typography.bodySmall)
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text("Productos:", style = MaterialTheme.typography.labelMedium)
-
-            if (pedido.productos.isEmpty()) {
-                Text(
-                    text = "• Sin detalle de artículos extraordinarios •",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                pedido.productos.forEach { producto ->
+            if (pedido.productos.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                pedido.productos.forEach { prod ->
                     Text(
-                        text = "• ${producto.cantidad} x ${producto.descripcion}",
+                        "• ${prod.cantidad} x ${prod.descripcion}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
 
+            if (pedido.comentario.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Comentario: ${pedido.comentario}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             if (mostrarAcciones) {
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = onRechazar,
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         )
-                    ) {
-                        Text("Rechazar")
-                    }
-
+                    ) { Text("Rechazar") }
                     Spacer(Modifier.width(8.dp))
-
-                    Button(onClick = onAceptar) {
-                        Text("Aceptar")
-                    }
+                    Button(onClick = onAceptar) { Text("Aceptar") }
                 }
             }
         }
