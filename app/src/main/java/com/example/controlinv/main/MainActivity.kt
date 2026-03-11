@@ -6,13 +6,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Icon
@@ -118,16 +119,21 @@ private fun AdminTabs(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextButton(onClick = { onChangeTab(AdminTab.INVENTARIO) }) {
-            Text("Inventario")
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(rememberScrollState())
+        ) {
+            TextButton(onClick = { onChangeTab(AdminTab.INVENTARIO) }) {
+                Text("Inventario")
+            }
+            TextButton(onClick = { onChangeTab(AdminTab.PEDIDOS) }) {
+                Text("Pedidos")
+            }
+            TextButton(onClick = { onChangeTab(AdminTab.LOGS) }) {
+                Text("Ediciones")
+            }
         }
-        TextButton(onClick = { onChangeTab(AdminTab.PEDIDOS) }) {
-            Text("Pedidos")
-        }
-        TextButton(onClick = { onChangeTab(AdminTab.LOGS) }) {
-            Text("Ediciones")
-        }
-        Spacer(Modifier.weight(1f))
         IconButton(onClick = onLogout) {
             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Salir")
         }
