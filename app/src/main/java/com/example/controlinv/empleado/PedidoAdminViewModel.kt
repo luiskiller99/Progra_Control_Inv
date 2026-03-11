@@ -16,9 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class PedidoUI(
@@ -27,8 +24,7 @@ data class PedidoUI(
     val fecha: String,
     val estado: String,
     val comentario: String,
-    val productos: List<String>,
-    val esExtraordinario: Boolean = false
+    val productos: List<String>
 )
 
 @Serializable
@@ -39,16 +35,6 @@ data class Pedido(
     val empleado_id: String,
     val empleado_email: String? = null,
     val comentario: String? = null
-)
-
-@Serializable
-data class PedidoExtraordinarioAdmin(
-    val id: String,
-    val fecha: String,
-    val estado: String,
-    val empleado_id: String,
-    val empleado_email: String,
-    val comentario: String
 )
 
 class PedidoAdminViewModel : ViewModel() {
@@ -72,30 +58,11 @@ class PedidoAdminViewModel : ViewModel() {
                     .select()
                     .decodeList<Pedido>()
 
-                val pedidosExtraordinarios = supabase
-                    .from("pedidos_extraordinarios")
-                    .select()
-                    .decodeList<PedidoExtraordinarioAdmin>()
-
-                val pedidosExtraordinariosIds = pedidosExtraordinarios.map { it.id }
-
                 val detalles = supabase
                     .from("pedido_detalle")
                     .select()
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
-
-                val detallesExtraordinarios = supabase
-                    .from("pedido_extraordinario_detalle")
-                    .select {
-                        if (pedidosExtraordinariosIds.isNotEmpty()) {
-                            filter {
-                                isIn("pedido_extraordinario_id", pedidosExtraordinariosIds)
-                            }
-                        }
-                    }
-                    .decodeList<DetallePedidoExtraordinarioEmpleado>()
-                    .groupBy { it.pedido_extraordinario_id }
 
                 val inventario = supabase
                     .from("inventario")
@@ -119,34 +86,11 @@ class PedidoAdminViewModel : ViewModel() {
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         comentario = pedido.comentario ?: "",
-                        productos = productos,
-                        esExtraordinario = false
+                        productos = productos
                     )
                 }
 
-                val pedidosExtraordinariosUI = pedidosExtraordinarios
-                    .sortedByDescending { it.fecha }
-                    .map { pedido ->
-                        val productos = detallesExtraordinarios[pedido.id]
-                            .orEmpty()
-                            .map { det ->
-                                "${det.cantidad} x ${det.nombre}"
-                            }
-
-                        PedidoUI(
-                            id = pedido.id,
-                            empleadoEmail = pedido.empleado_email,
-                            fecha = pedido.fecha,
-                            estado = pedido.estado,
-                            comentario = pedido.comentario,
-                            productos = productos,
-                            esExtraordinario = true
-                        )
-
-                }
-
-                _listaPedidos.value = (pedidosUI + pedidosExtraordinariosUI)
-                    .sortedByDescending { it.fecha }
+                _listaPedidos.value = pedidosUI
             } catch (e: Exception) {
                 Log.e("ADMIN_PEDIDOS", "Error cargando pedidos", e)
             } finally {
@@ -155,22 +99,13 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-    fun aceptarPedido(pedidoId: String, esExtraordinario: Boolean) {
+    fun aceptarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
-                if (esExtraordinario) {
-                    supabase
-                        .from("pedidos_extraordinarios")
-                        .update(mapOf("estado" to "ACEPTADO")) {
-                            filter { eq("id", pedidoId) }
-                            select(Columns.list("id"))
-                        }
-                } else {
-                    supabase.postgrest.rpc(
-                        "aceptar_pedido",
-                        mapOf("p_pedido_id" to pedidoId)
-                    )
-                }
+                supabase.postgrest.rpc(
+                    "aceptar_pedido",
+                    mapOf("p_pedido_id" to pedidoId)
+                )
                 cargarPedidos()
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error aceptando pedido", e)
@@ -178,22 +113,13 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-    fun rechazarPedido(pedidoId: String, esExtraordinario: Boolean) {
+    fun rechazarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
-                if (esExtraordinario) {
-                    supabase
-                        .from("pedidos_extraordinarios")
-                        .update(mapOf("estado" to "RECHAZADO")) {
-                            filter { eq("id", pedidoId) }
-                            select(Columns.list("id"))
-                        }
-                } else {
-                    supabase.postgrest.rpc(
-                        "rechazar_pedido",
-                        mapOf("p_pedido_id" to pedidoId)
-                    )
-                }
+                supabase.postgrest.rpc(
+                    "rechazar_pedido",
+                    mapOf("p_pedido_id" to pedidoId)
+                )
                 cargarPedidos()
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error rechazando pedido", e)
