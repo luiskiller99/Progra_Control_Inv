@@ -41,6 +41,16 @@ data class Pedido(
     val comentario: String? = null
 )
 
+@Serializable
+data class PedidoExtraordinarioAdmin(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val empleado_id: String,
+    val empleado_email: String,
+    val comentario: String
+)
+
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
@@ -65,7 +75,9 @@ class PedidoAdminViewModel : ViewModel() {
                 val pedidosExtraordinarios = supabase
                     .from("pedidos_extraordinarios")
                     .select()
-                    .decodeList<PedidoExtraordinarioEmpleado>()
+                    .decodeList<PedidoExtraordinarioAdmin>()
+
+                val pedidosExtraordinariosIds = pedidosExtraordinarios.map { it.id }
 
                 val detalles = supabase
                     .from("pedido_detalle")
@@ -75,7 +87,13 @@ class PedidoAdminViewModel : ViewModel() {
 
                 val detallesExtraordinarios = supabase
                     .from("pedido_extraordinario_detalle")
-                    .select()
+                    .select {
+                        if (pedidosExtraordinariosIds.isNotEmpty()) {
+                            filter {
+                                isIn("pedido_extraordinario_id", pedidosExtraordinariosIds)
+                            }
+                        }
+                    }
                     .decodeList<DetallePedidoExtraordinarioEmpleado>()
                     .groupBy { it.pedido_extraordinario_id }
 
@@ -117,7 +135,7 @@ class PedidoAdminViewModel : ViewModel() {
 
                         PedidoUI(
                             id = pedido.id,
-                            empleadoEmail = pedido.empleado_id,
+                            empleadoEmail = pedido.empleado_email,
                             fecha = pedido.fecha,
                             estado = pedido.estado,
                             comentario = pedido.comentario,
