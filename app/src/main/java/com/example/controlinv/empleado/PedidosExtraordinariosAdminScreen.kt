@@ -146,6 +146,13 @@ private fun PedidoExtraordinarioAdminItem(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
+            } else {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "• Sin detalle de productos •",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (pedido.comentario.isNotBlank()) {
