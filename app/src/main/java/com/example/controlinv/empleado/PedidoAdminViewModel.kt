@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class PedidoUI(
@@ -139,6 +142,11 @@ class PedidoAdminViewModel : ViewModel() {
                                 it
                             )
                         }.getOrDefault(emptyList())
+
+                        Log.d(
+                            "ADMIN_PEDIDOS",
+                            "pedidoExtra id=${pedido.id} key=$pedidoKey productos=${productos.size}"
+                        )
 
                         PedidoUI(
                             id = pedido.id,
