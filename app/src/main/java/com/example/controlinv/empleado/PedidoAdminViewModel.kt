@@ -38,31 +38,6 @@ data class Pedido(
     val comentario: String? = null
 )
 
-@Serializable
-data class PedidoExtraordinario(
-    val id: String,
-    val fecha: String,
-    val estado: String,
-    val empleado_id: String,
-    val empleado_email: String,
-    val prioridad: String,
-    val comentario: String
-)
-
-@Serializable
-data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String? = null,
-    val pedido_id: String? = null,
-    val nombre: String? = null,
-    val cantidad: Int? = null,
-    val cantidad_solicitada: Int? = null
-)
-
-private fun normalizarIdPedidoExtra(id: String?): String? {
-    val limpio = id?.trim()?.lowercase().orEmpty()
-    return limpio.ifBlank { null }
-}
-
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
@@ -84,14 +59,10 @@ class PedidoAdminViewModel : ViewModel() {
                     .select()
                     .decodeList<Pedido>()
 
-                val pedidosExtraordinarios = runCatching {
-                    supabase
-                        .from("pedidos_extraordinarios")
-                        .select()
-                        .decodeList<PedidoExtraordinario>()
-                }.onFailure {
-                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer pedidos extraordinarios", it)
-                }.getOrDefault(emptyList())
+                val pedidosExtraordinarios = supabase
+                    .from("pedidos_extraordinarios")
+                    .select()
+                    .decodeList<PedidoExtraordinarioEmpleado>()
 
                 val detalles = supabase
                     .from("pedido_detalle")
@@ -99,20 +70,11 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = runCatching {
-                    supabase
-                        .from("pedido_extraordinario_detalle")
-                        .select()
-                        .decodeList<DetallePedidoExtraordinario>()
-                        .groupBy { det ->
-                            normalizarIdPedidoExtra(det.pedido_extraordinario_id)
-                                ?: normalizarIdPedidoExtra(det.pedido_id)
-                                ?: ""
-                        }
-                        .filterKeys { it.isNotBlank() }
-                }.onFailure {
-                    Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
-                }.getOrDefault(emptyMap())
+                val detallesExtraordinarios = supabase
+                    .from("pedido_extraordinario_detalle")
+                    .select()
+                    .decodeList<DetallePedidoExtraordinarioEmpleado>()
+                    .groupBy { it.pedido_extraordinario_id }
 
                 val inventario = supabase
                     .from("inventario")
@@ -144,27 +106,22 @@ class PedidoAdminViewModel : ViewModel() {
                 val pedidosExtraordinariosUI = pedidosExtraordinarios
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
-                        val pedidoKey = normalizarIdPedidoExtra(pedido.id)
-                        val productos = detallesExtraordinarios[pedidoKey]
+                        val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { det ->
-                                val nombreItem = det.nombre
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: "Artículo extraordinario"
-                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
-                                "${cantidadItem} x $nombreItem"
+                                "${det.cantidad} x ${det.nombre}"
                             }
 
                         PedidoUI(
                             id = pedido.id,
-                            empleadoEmail = pedido.empleado_email,
+                            empleadoEmail = pedido.empleado_id,
                             fecha = pedido.fecha,
                             estado = pedido.estado,
                             comentario = pedido.comentario,
                             productos = productos,
                             esExtraordinario = true
                         )
-                    
+
                 }
 
                 _listaPedidos.value = (pedidosUI + pedidosExtraordinariosUI)
