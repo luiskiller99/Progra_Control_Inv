@@ -51,15 +51,13 @@ data class PedidoExtraordinario(
 
 @Serializable
 data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String? = null,
-    val pedido_id: String? = null,
-    val nombre: String? = null,
-    val cantidad: Int? = null,
-    val cantidad_solicitada: Int? = null
+    val pedido_extraordinario_id: String,
+    val nombre: String,
+    val cantidad: Int
 )
 
 private fun normalizarIdPedidoExtra(id: String?): String? {
-    val limpio = id?.trim()?.lowercase().orEmpty()
+    val limpio = id?.trim().orEmpty()
     return limpio.ifBlank { null }
 }
 
@@ -104,15 +102,20 @@ class PedidoAdminViewModel : ViewModel() {
                         .from("pedido_extraordinario_detalle")
                         .select()
                         .decodeList<DetallePedidoExtraordinario>()
-                        .groupBy { det ->
-                            normalizarIdPedidoExtra(det.pedido_extraordinario_id)
-                                ?: normalizarIdPedidoExtra(det.pedido_id)
-                                ?: ""
-                        }
+                        .groupBy { normalizarIdPedidoExtra(it.pedido_extraordinario_id).orEmpty() }
                         .filterKeys { it.isNotBlank() }
                 }.onFailure {
                     Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
                 }.getOrDefault(emptyMap())
+
+                if (pedidosExtraordinarios.isNotEmpty() && detallesExtraordinarios.isEmpty()) {
+                    Log.w(
+                        "ADMIN_PEDIDOS",
+                        "Pedidos extraordinarios cargados sin detalle. Posible RLS/política SELECT en pedido_extraordinario_detalle"
+                    )
+                }
+
+                Log.d("ADMIN_PEDIDOS", "extraPedidos=${pedidosExtraordinarios.size} detalleKeys=${detallesExtraordinarios.keys.size}")
 
                 val inventario = supabase
                     .from("inventario")
@@ -148,12 +151,13 @@ class PedidoAdminViewModel : ViewModel() {
                         val productos = detallesExtraordinarios[pedidoKey]
                             .orEmpty()
                             .map { det ->
-                                val nombreItem = det.nombre
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: "Artículo extraordinario"
-                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
-                                "${cantidadItem} x $nombreItem"
+                                "${det.cantidad} x ${det.nombre}"
                             }
+
+                        Log.d(
+                            "ADMIN_PEDIDOS",
+                            "pedidoExtra id=${pedido.id} key=$pedidoKey productos=${productos.size}"
+                        )
 
                         PedidoUI(
                             id = pedido.id,
