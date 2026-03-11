@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class PedidoUI(
@@ -61,6 +64,23 @@ private fun normalizarIdPedidoExtra(id: String?): String? {
     return limpio.ifBlank { null }
 }
 
+private fun JsonObject.stringFrom(vararg keys: String): String? {
+    keys.forEach { key ->
+        val valor = (this[key] as? JsonPrimitive)?.contentOrNull?.trim()
+        if (!valor.isNullOrBlank()) return valor
+    }
+    return null
+}
+
+private fun JsonObject.intFrom(vararg keys: String): Int? {
+    keys.forEach { key ->
+        val primitive = this[key] as? JsonPrimitive ?: return@forEach
+        primitive.intOrNull?.let { return it }
+        primitive.contentOrNull?.toDoubleOrNull()?.toInt()?.let { return it }
+    }
+    return null
+}
+
 class PedidoAdminViewModel : ViewModel() {
     private val _listaPedidos = MutableStateFlow<List<PedidoUI>>(emptyList())
     val listaPedidos: StateFlow<List<PedidoUI>> = _listaPedidos
@@ -97,7 +117,7 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = runCatching {
+                val detallesExtraRawPorPedido = runCatching {
                     supabase
                         .from("pedido_extraordinario_detalle")
                         .select()
@@ -148,7 +168,7 @@ class PedidoAdminViewModel : ViewModel() {
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
                         val pedidoKey = normalizarIdPedidoExtra(pedido.id)
-                        val productos = detallesExtraordinarios[pedidoKey]
+                        val productosMapeados = detallesExtraordinarios[pedidoKey]
                             .orEmpty()
                             .map { det ->
                                 "${det.cantidad} x ${det.nombre}"
