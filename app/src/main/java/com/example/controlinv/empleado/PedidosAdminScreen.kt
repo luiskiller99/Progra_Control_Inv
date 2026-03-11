@@ -56,7 +56,6 @@ private fun idPedidoCorto(id: String?): String {
     return hash6.toString().padStart(6, '0')
 }
 
-
 private data class ProductoExportado(
     val codigo: String,
     val descripcion: String,
