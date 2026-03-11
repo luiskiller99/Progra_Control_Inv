@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -146,6 +148,7 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
 
 enum class PedidoFiltro {
     ENVIADO,
+    EXTRAORDINARIO,
     ACEPTADO,
     RECHAZADO
 }
@@ -184,11 +187,14 @@ fun PedidosAdminScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
                         .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
                         Text("Pendientes")
+                    }
+                    TextButton(onClick = { filtro = PedidoFiltro.EXTRAORDINARIO}) {
+                        Text("Extraordinarios")
                     }
                     TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO}) {
                         Text("Aceptados")
@@ -198,7 +204,10 @@ fun PedidosAdminScreen(
                     }
                 }
                 val pedidosFiltrados = when (filtro) {
-                    PedidoFiltro.ENVIADO -> pedidos.filter { it.estado.equals("ENVIADO", ignoreCase = true) }
+                    PedidoFiltro.ENVIADO -> pedidos.filter {
+                        !it.esExtraordinario && it.estado.equals("ENVIADO", ignoreCase = true)
+                    }
+                    PedidoFiltro.EXTRAORDINARIO -> pedidos.filter { it.esExtraordinario }
                     PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
                     PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
                 }
@@ -338,4 +347,3 @@ fun PedidoItem(
         }
     }
 }
-
