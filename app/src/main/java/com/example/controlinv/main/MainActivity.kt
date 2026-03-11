@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.controlinv.auth.EstadoLogin
 import com.example.controlinv.auth.LoginViewModel
 import com.example.controlinv.empleado.PedidosAdminScreen
+import com.example.controlinv.empleado.PedidosExtraordinariosAdminScreen
 import com.example.controlinv.inventario.InventarioLogsScreen
 import com.example.controlinv.main.screens.InventarioScreen
 import com.example.controlinv.main.screens.LoginScreen
@@ -43,6 +44,7 @@ import com.example.controlinv.ui.theme.ControlInvTheme
 enum class AdminTab {
     INVENTARIO,
     PEDIDOS,
+    EXTRAORDINARIOS,
     LOGS
 }
 
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
                                 when (adminTab) {
                                     AdminTab.INVENTARIO -> InventarioScreen()
                                     AdminTab.PEDIDOS -> PedidosAdminScreen()
+                                    AdminTab.EXTRAORDINARIOS -> PedidosExtraordinariosAdminScreen()
                                     AdminTab.LOGS -> InventarioLogsScreen()
                                 }
                             }
