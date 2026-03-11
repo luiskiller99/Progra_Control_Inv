@@ -54,17 +54,13 @@ data class PedidoExtraordinario(
 
 @Serializable
 data class DetallePedidoExtraordinario(
-    val pedido_extraordinario_id: String? = null,
-    val pedido_id: String? = null,
-    val nombre: String? = null,
-    val articulo: String? = null,
-    val descripcion: String? = null,
-    val cantidad: Int? = null,
-    val cantidad_solicitada: Int? = null
+    val pedido_extraordinario_id: String,
+    val nombre: String,
+    val cantidad: Int
 )
 
 private fun normalizarIdPedidoExtra(id: String?): String? {
-    val limpio = id?.trim()?.lowercase().orEmpty()
+    val limpio = id?.trim().orEmpty()
     return limpio.ifBlank { null }
 }
 
@@ -125,49 +121,12 @@ class PedidoAdminViewModel : ViewModel() {
                     supabase
                         .from("pedido_extraordinario_detalle")
                         .select()
-                        .decodeList<JsonObject>()
-                        .mapNotNull { raw ->
-                            val pedidoId = normalizarIdPedidoExtra(
-                                raw.stringFrom(
-                                    "pedido_extraordinario_id",
-                                    "pedido_id",
-                                    "id_pedido_extraordinario"
-                                )
-                            ) ?: return@mapNotNull null
-
-                            pedidoId to raw
-                        }
-                        .groupBy(
-                            keySelector = { it.first },
-                            valueTransform = { it.second }
-                        )
+                        .decodeList<DetallePedidoExtraordinario>()
+                        .groupBy { normalizarIdPedidoExtra(it.pedido_extraordinario_id).orEmpty() }
                         .filterKeys { it.isNotBlank() }
                 }.onFailure {
                     Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
                 }.getOrDefault(emptyMap())
-
-                val detallesExtraordinarios = detallesExtraRawPorPedido
-                    .mapValues { (_, raws) ->
-                        raws.map { raw ->
-                            DetallePedidoExtraordinario(
-                                pedido_extraordinario_id = normalizarIdPedidoExtra(
-                                    raw.stringFrom(
-                                        "pedido_extraordinario_id",
-                                        "pedido_id",
-                                        "id_pedido_extraordinario"
-                                    )
-                                ),
-                                nombre = raw.stringFrom(
-                                    "nombre",
-                                    "articulo",
-                                    "descripcion",
-                                    "producto",
-                                    "detalle"
-                                ),
-                                cantidad = raw.intFrom("cantidad", "cantidad_solicitada", "cant")
-                            )
-                        }
-                    }
 
                 if (pedidosExtraordinarios.isNotEmpty() && detallesExtraordinarios.isEmpty()) {
                     Log.w(
@@ -176,10 +135,7 @@ class PedidoAdminViewModel : ViewModel() {
                     )
                 }
 
-                Log.d(
-                    "ADMIN_PEDIDOS",
-                    "extraPedidos=${pedidosExtraordinarios.size} detalleKeys=${detallesExtraordinarios.keys.size} rawDetalleKeys=${detallesExtraRawPorPedido.keys.size}"
-                )
+                Log.d("ADMIN_PEDIDOS", "extraPedidos=${pedidosExtraordinarios.size} detalleKeys=${detallesExtraordinarios.keys.size}")
 
                 val inventario = supabase
                     .from("inventario")
@@ -215,20 +171,8 @@ class PedidoAdminViewModel : ViewModel() {
                         val productosMapeados = detallesExtraordinarios[pedidoKey]
                             .orEmpty()
                             .map { det ->
-                                val nombreItem = det.nombre
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: "Artículo extraordinario"
-                                val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
-                                "${cantidadItem} x $nombreItem"
+                                "${det.cantidad} x ${det.nombre}"
                             }
-
-                        val productos = if (productosMapeados.isNotEmpty()) {
-                            productosMapeados
-                        } else {
-                            detallesExtraRawPorPedido[pedidoKey]
-                                .orEmpty()
-                                .map { raw -> "RAW: ${raw.toString()}" }
-                        }
 
                         Log.d(
                             "ADMIN_PEDIDOS",
