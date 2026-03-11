@@ -231,18 +231,12 @@ fun PedidosAdminScreen(
                                 mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
                                 onAceptar = {
                                     if (pedido.esPendiente()) {
-                                        viewModel.aceptarPedido(
-                                            pedidoId = pedido.id,
-                                            esExtraordinario = pedido.esExtraordinario
-                                        )
+                                        viewModel.aceptarPedido(pedido.id)
                                     }
                                 },
                                 onRechazar = {
                                     if (pedido.esPendiente()) {
-                                        viewModel.rechazarPedido(
-                                            pedidoId = pedido.id,
-                                            esExtraordinario = pedido.esExtraordinario
-                                        )
+                                        viewModel.rechazarPedido(pedido.id)
                                     }
                                 }
                             )
@@ -286,7 +280,7 @@ fun PedidoItem(
             // 📧 Email
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    pedido.empleadoEmail ?: "Empleado desconocido",
+                    pedido.empleadoEmail.ifBlank { "Empleado desconocido" },
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -323,11 +317,7 @@ fun PedidoItem(
 
             if (pedido.productos.isEmpty()) {
                 Text(
-                    text = if (pedido.esExtraordinario) {
-                        "• Sin detalle de artículos extraordinarios •"
-                    } else {
-                        "• Sin detalle de productos •"
-                    },
+                    text = "• Sin detalle de productos •",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
