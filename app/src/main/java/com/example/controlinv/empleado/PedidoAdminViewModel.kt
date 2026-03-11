@@ -14,7 +14,12 @@ import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 data class PedidoUI(
@@ -23,7 +28,8 @@ data class PedidoUI(
     val fecha: String,
     val estado: String,
     val comentario: String,
-    val productos: List<String>
+    val productos: List<String>,
+    val esExtraordinario: Boolean = false
 )
 
 @Serializable
@@ -34,6 +40,32 @@ data class Pedido(
     val empleado_id: String,
     val empleado_email: String? = null,
     val comentario: String? = null
+)
+
+@Serializable
+data class PedidoExtraordinario(
+    val id: String,
+    val fecha: String,
+    val estado: String,
+    val empleado_id: String,
+    val empleado_email: String? = null,
+    val comentario: String? = null
+)
+
+@Serializable
+data class DetallePedidoExtraordinario(
+    @SerialName("pedido_extraordinario_id")
+    val pedidoExtraordinarioId: String? = null,
+    @SerialName("pedido_id")
+    val pedidoId: String? = null,
+    @SerialName("nombre_articulo")
+    val nombreArticulo: String? = null,
+    @SerialName("articulo")
+    val articulo: String? = null,
+    @SerialName("descripcion")
+    val descripcion: String? = null,
+    @SerialName("cantidad")
+    val cantidad: Int? = null
 )
 
 class PedidoAdminViewModel : ViewModel() {
@@ -69,6 +101,31 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<Inventario>()
                     .associateBy { it.id }
 
+                val pedidosExtraordinarios = runCatching {
+                    supabase
+                        .from("pedidos_extraordinarios")
+                        .select()
+                        .decodeList<PedidoExtraordinario>()
+                }.getOrElse {
+                    Log.w("ADMIN_PEDIDOS", "No se pudieron cargar pedidos_extraordinarios", it)
+                    emptyList()
+                }
+
+                val detallesExtraordinarios = runCatching {
+                    supabase
+                        .from("pedido_extraordinario_detalle")
+                        .select()
+                        .decodeList<JsonObject>()
+                        .groupBy { json ->
+                            json.stringOrNull("pedido_extraordinario_id")
+                                ?: json.stringOrNull("pedido_id")
+                                ?: ""
+                        }
+                }.getOrElse {
+                    Log.w("ADMIN_PEDIDOS", "No se pudieron cargar detalles extraordinarios", it)
+                    emptyMap()
+                }
+
                 val pedidosUI = pedidos.sortedByDescending { it.fecha }.map { pedido ->
                     val productos = detalles[pedido.id]
                         .orEmpty()
@@ -85,11 +142,38 @@ class PedidoAdminViewModel : ViewModel() {
                         fecha = pedido.fecha.toString(),
                         estado = pedido.estado,
                         comentario = pedido.comentario ?: "",
-                        productos = productos
+                        productos = productos,
+                        esExtraordinario = false
                     )
                 }
 
-                _listaPedidos.value = pedidosUI
+                val pedidosExtraordinariosUI = pedidosExtraordinarios
+                    .sortedByDescending { it.fecha }
+                    .map { pedido ->
+                        val productos = detallesExtraordinarios[pedido.id]
+                            .orEmpty()
+                            .map { detalle ->
+                                val nombre = detalle.stringOrNull("nombre_articulo")
+                                    ?: detalle.stringOrNull("articulo")
+                                    ?: detalle.stringOrNull("descripcion")
+                                    ?: "Artículo extraordinario"
+                                val cantidad = detalle.intOrNull("cantidad") ?: 1
+                                "$cantidad x $nombre"
+                            }
+
+                        PedidoUI(
+                            id = pedido.id,
+                            empleadoEmail = pedido.empleado_email ?: "Desconocido",
+                            fecha = pedido.fecha,
+                            estado = pedido.estado,
+                            comentario = pedido.comentario ?: "",
+                            productos = productos,
+                            esExtraordinario = true
+                        )
+                    }
+
+                _listaPedidos.value = (pedidosUI + pedidosExtraordinariosUI)
+                    .sortedByDescending { it.fecha }
             } catch (e: Exception) {
                 Log.e("ADMIN_PEDIDOS", "Error cargando pedidos", e)
             } finally {
@@ -126,3 +210,11 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 }
+
+private fun JsonObject.stringOrNull(key: String): String? {
+    val value: JsonElement = this[key] ?: return null
+    return value.jsonPrimitive.contentOrNull
+}
+
+private fun JsonObject.intOrNull(key: String): Int? =
+    this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
