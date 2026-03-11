@@ -391,7 +391,7 @@ class PedidoViewModel(
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { detalle ->
-                                val descripcion = detalle.stringOrNull("nombre_articulo")
+                                val descripcion = detalle.stringOrNull("nombre")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
