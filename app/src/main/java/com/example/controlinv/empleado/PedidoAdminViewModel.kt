@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class PedidoUI(
@@ -54,6 +57,8 @@ data class DetallePedidoExtraordinario(
     val pedido_extraordinario_id: String? = null,
     val pedido_id: String? = null,
     val nombre: String? = null,
+    val articulo: String? = null,
+    val descripcion: String? = null,
     val cantidad: Int? = null,
     val cantidad_solicitada: Int? = null
 )
@@ -61,6 +66,23 @@ data class DetallePedidoExtraordinario(
 private fun normalizarIdPedidoExtra(id: String?): String? {
     val limpio = id?.trim()?.lowercase().orEmpty()
     return limpio.ifBlank { null }
+}
+
+private fun JsonObject.stringFrom(vararg keys: String): String? {
+    keys.forEach { key ->
+        val valor = (this[key] as? JsonPrimitive)?.contentOrNull?.trim()
+        if (!valor.isNullOrBlank()) return valor
+    }
+    return null
+}
+
+private fun JsonObject.intFrom(vararg keys: String): Int? {
+    keys.forEach { key ->
+        val primitive = this[key] as? JsonPrimitive ?: return@forEach
+        primitive.intOrNull?.let { return it }
+        primitive.contentOrNull?.toDoubleOrNull()?.toInt()?.let { return it }
+    }
+    return null
 }
 
 class PedidoAdminViewModel : ViewModel() {
@@ -99,20 +121,65 @@ class PedidoAdminViewModel : ViewModel() {
                     .decodeList<DetallePedido>()
                     .groupBy { it.pedido_id }
 
-                val detallesExtraordinarios = runCatching {
+                val detallesExtraRawPorPedido = runCatching {
                     supabase
                         .from("pedido_extraordinario_detalle")
                         .select()
-                        .decodeList<DetallePedidoExtraordinario>()
-                        .groupBy { det ->
-                            normalizarIdPedidoExtra(det.pedido_extraordinario_id)
-                                ?: normalizarIdPedidoExtra(det.pedido_id)
-                                ?: ""
+                        .decodeList<JsonObject>()
+                        .mapNotNull { raw ->
+                            val pedidoId = normalizarIdPedidoExtra(
+                                raw.stringFrom(
+                                    "pedido_extraordinario_id",
+                                    "pedido_id",
+                                    "id_pedido_extraordinario"
+                                )
+                            ) ?: return@mapNotNull null
+
+                            pedidoId to raw
                         }
+                        .groupBy(
+                            keySelector = { it.first },
+                            valueTransform = { it.second }
+                        )
                         .filterKeys { it.isNotBlank() }
                 }.onFailure {
                     Log.e("ADMIN_PEDIDOS", "No se pudieron leer detalles extraordinarios", it)
                 }.getOrDefault(emptyMap())
+
+                val detallesExtraordinarios = detallesExtraRawPorPedido
+                    .mapValues { (_, raws) ->
+                        raws.map { raw ->
+                            DetallePedidoExtraordinario(
+                                pedido_extraordinario_id = normalizarIdPedidoExtra(
+                                    raw.stringFrom(
+                                        "pedido_extraordinario_id",
+                                        "pedido_id",
+                                        "id_pedido_extraordinario"
+                                    )
+                                ),
+                                nombre = raw.stringFrom(
+                                    "nombre",
+                                    "articulo",
+                                    "descripcion",
+                                    "producto",
+                                    "detalle"
+                                ),
+                                cantidad = raw.intFrom("cantidad", "cantidad_solicitada", "cant")
+                            )
+                        }
+                    }
+
+                if (pedidosExtraordinarios.isNotEmpty() && detallesExtraordinarios.isEmpty()) {
+                    Log.w(
+                        "ADMIN_PEDIDOS",
+                        "Pedidos extraordinarios cargados sin detalle. Posible RLS/política SELECT en pedido_extraordinario_detalle"
+                    )
+                }
+
+                Log.d(
+                    "ADMIN_PEDIDOS",
+                    "extraPedidos=${pedidosExtraordinarios.size} detalleKeys=${detallesExtraordinarios.keys.size} rawDetalleKeys=${detallesExtraRawPorPedido.keys.size}"
+                )
 
                 val inventario = supabase
                     .from("inventario")
@@ -145,7 +212,7 @@ class PedidoAdminViewModel : ViewModel() {
                     .sortedByDescending { it.fecha }
                     .map { pedido ->
                         val pedidoKey = normalizarIdPedidoExtra(pedido.id)
-                        val productos = detallesExtraordinarios[pedidoKey]
+                        val productosMapeados = detallesExtraordinarios[pedidoKey]
                             .orEmpty()
                             .map { det ->
                                 val nombreItem = det.nombre
@@ -154,6 +221,19 @@ class PedidoAdminViewModel : ViewModel() {
                                 val cantidadItem = det.cantidad ?: det.cantidad_solicitada ?: 0
                                 "${cantidadItem} x $nombreItem"
                             }
+
+                        val productos = if (productosMapeados.isNotEmpty()) {
+                            productosMapeados
+                        } else {
+                            detallesExtraRawPorPedido[pedidoKey]
+                                .orEmpty()
+                                .map { raw -> "RAW: ${raw.toString()}" }
+                        }
+
+                        Log.d(
+                            "ADMIN_PEDIDOS",
+                            "pedidoExtra id=${pedido.id} key=$pedidoKey productos=${productos.size}"
+                        )
 
                         PedidoUI(
                             id = pedido.id,
