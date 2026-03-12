@@ -58,6 +58,7 @@ import com.example.controlinv.inventario.model.Inventario
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
 private val colCantidad = 80.dp
+private val colUnidad = 100.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
 
@@ -190,6 +191,7 @@ fun NuevoInventarioDialog(
     var descripcion by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
     var clasificacion by remember { mutableStateOf("") }
+    var unidad by remember { mutableStateOf("") }
     var imagenSeleccionada by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
     val launcherImagen = rememberLauncherForActivityResult(
@@ -201,6 +203,7 @@ fun NuevoInventarioDialog(
     val valido = codigo.isNotBlank() &&
             descripcion.isNotBlank() &&
             cantidad.toIntOrNull() != null &&
+            unidad.isNotBlank() &&
             imagenSeleccionada != null
 
     AlertDialog(
@@ -214,6 +217,7 @@ fun NuevoInventarioDialog(
                             codigo = codigo.trim(),
                             descripcion = descripcion.trim(),
                             cantidad = cantidad.toInt(),
+                            unidad = unidad.trim(),
                             clasificacion = clasificacion.trim()
                         ),
                         imagenSeleccionada?.let { uri ->
@@ -258,6 +262,12 @@ fun NuevoInventarioDialog(
                     label = { Text("Clasificación") },
                     singleLine = true
                 )
+                OutlinedTextField(
+                    value = unidad,
+                    onValueChange = { unidad = it },
+                    label = { Text("Unidad (ej. litros, kilos)") },
+                    singleLine = true
+                )
 
                 Button(onClick = { launcherImagen.launch("image/*") }) {
                     Text(if (imagenSeleccionada == null) "Seleccionar imagen" else "Cambiar imagen")
@@ -297,6 +307,7 @@ fun InventarioHeader() {
         Text("Código", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colCodigo))
         Text("Descripción", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colDescripcion))
         Text("Cantidad", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colCantidad))
+        Text("Unidad", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colUnidad))
         Text("Clase", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colClase))
         Text("Acciones", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(colAcciones))
     }
@@ -313,6 +324,7 @@ fun InventarioRow(
     var codigo by remember { mutableStateOf(item.codigo ?: "") }
     var descripcion by remember { mutableStateOf(item.descripcion ?: "") }
     var cantidad by remember { mutableStateOf(item.cantidad?.toString() ?: "") }
+    var unidad by remember { mutableStateOf(item.unidad ?: "") }
     var clase by remember { mutableStateOf(item.clasificacion ?: "") }
 
     Row(
@@ -324,6 +336,7 @@ fun InventarioRow(
         CampoTabla(codigo, { codigo = it }, colCodigo)
         CampoTabla(descripcion, { descripcion = it }, colDescripcion)
         CampoTabla(cantidad, { cantidad = it }, colCantidad)
+        CampoTabla(unidad, { unidad = it }, colUnidad)
         CampoTabla(clase, { clase = it }, colClase)
 
         Row(
@@ -336,6 +349,7 @@ fun InventarioRow(
                         codigo = codigo,
                         descripcion = descripcion,
                         cantidad = cantidad.toIntOrNull() ?: item.cantidad,
+                        unidad = unidad,
                         clasificacion = clase
                     )
                 )

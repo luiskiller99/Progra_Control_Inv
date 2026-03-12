@@ -158,7 +158,9 @@ class PedidoAdminViewModel : ViewModel() {
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
                                 val cantidad = detalle.intOrNull("cantidad") ?: 1
-                                "$cantidad x $nombre"
+                                val unidad = detalle.stringOrNull("unidad").orEmpty().trim()
+                                val nombreConUnidad = if (unidad.isBlank()) nombre else "$nombre ($unidad)"
+                                "$cantidad x $nombreConUnidad"
                             }
 
                         PedidoUI(

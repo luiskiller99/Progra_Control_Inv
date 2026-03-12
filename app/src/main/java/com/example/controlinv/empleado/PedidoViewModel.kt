@@ -396,8 +396,10 @@ class PedidoViewModel(
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
                                 val cantidad = detalle.intOrNull("cantidad") ?: 1
+                                val unidad = detalle.stringOrNull("unidad").orEmpty().trim()
+                                val descripcionConUnidad = if (unidad.isBlank()) descripcion else "$descripcion ($unidad)"
                                 ProductoPedidoUI(
-                                    descripcion = descripcion,
+                                    descripcion = descripcionConUnidad,
                                     cantidad = cantidad
                                 )
                             }
@@ -434,7 +436,8 @@ class PedidoViewModel(
         inventario = inventarioOriginal.filter { item ->
             val descripcion = normalizarTexto(item.descripcion)
             val clasificacion = normalizarTexto(item.clasificacion)
-            val baseBusqueda = "$descripcion $clasificacion"
+            val unidad = normalizarTexto(item.unidad)
+            val baseBusqueda = "$descripcion $clasificacion $unidad"
 
             terminos.all { termino -> baseBusqueda.contains(termino) }
         }
