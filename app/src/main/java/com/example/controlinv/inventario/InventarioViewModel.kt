@@ -54,7 +54,8 @@ class InventarioViewModel : ViewModel() {
                 .filter {
                     it.codigo?.contains(texto, true) == true ||
                             it.descripcion?.contains(texto, true) == true ||
-                            it.clasificacion?.contains(texto, true) == true
+                            it.clasificacion?.contains(texto, true) == true ||
+                            it.unidad?.contains(texto, true) == true
                 }
                 .map { it.copy() }
         }

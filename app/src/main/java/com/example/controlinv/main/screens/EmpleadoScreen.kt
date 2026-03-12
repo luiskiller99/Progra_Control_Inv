@@ -68,7 +68,8 @@ private enum class EmpleadoTab {
 
 private data class ItemPedidoExtraordinarioUI(
     val nombre: String,
-    val cantidad: Int
+    val cantidad: Int,
+    val unidad: String
 )
 
 private fun resolverImagenProducto(item: Inventario): String? {
@@ -332,6 +333,8 @@ private fun PedidoExtraordinarioVisualCard(
     onNombreArticuloExtraChange: (String) -> Unit,
     cantidadExtra: String,
     onCantidadExtraChange: (String) -> Unit,
+    unidadExtra: String,
+    onUnidadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
@@ -372,6 +375,14 @@ private fun PedidoExtraordinarioVisualCard(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = unidadExtra,
+                onValueChange = onUnidadExtraChange,
+                label = { Text("Unidad (ej. litros, kilos)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
 
             Spacer(Modifier.height(8.dp))
             Button(
@@ -404,7 +415,7 @@ private fun PedidoExtraordinarioVisualCard(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                item.cantidad.toString(),
+                                "${item.cantidad} ${item.unidad}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(horizontal = 8.dp)
                             )
@@ -511,7 +522,7 @@ private fun ProductoCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Stock: ${item.cantidad ?: 0}",
+                    text = "Stock: ${item.cantidad ?: 0} ${item.unidad.orEmpty()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -540,6 +551,7 @@ fun PedidoEmpleadoScreen(
     var comentarioPedido by remember { mutableStateOf("") }
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
+    var unidadExtraordinaria by remember { mutableStateOf("") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -660,10 +672,13 @@ fun PedidoEmpleadoScreen(
                                 onNombreArticuloExtraChange = { articuloExtraordinario = it },
                                 cantidadExtra = cantidadExtraordinaria,
                                 onCantidadExtraChange = { cantidadExtraordinaria = it },
+                                unidadExtra = unidadExtraordinaria,
+                                onUnidadExtraChange = { unidadExtraordinaria = it },
                                 itemsExtraordinarios = pedidosExtraordinarios,
                                 onAgregarExtraordinario = {
                                     val nombre = articuloExtraordinario.trim()
                                     val cantidad = cantidadExtraordinaria.toIntOrNull()
+                                    val unidad = unidadExtraordinaria.trim()
                                     when {
                                         nombre.isBlank() -> {
                                             scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
@@ -673,12 +688,17 @@ fun PedidoEmpleadoScreen(
                                             scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
                                         }
 
+                                        unidad.isBlank() -> {
+                                            scope.launch { snackbarHostState.showSnackbar("Ingresa la unidad del artículo") }
+                                        }
+
                                         else -> {
                                             pedidosExtraordinarios.add(
-                                                ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad)
+                                                ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad, unidad = unidad)
                                             )
                                             articuloExtraordinario = ""
                                             cantidadExtraordinaria = ""
+                                            unidadExtraordinaria = ""
                                         }
                                     }
                                 },
