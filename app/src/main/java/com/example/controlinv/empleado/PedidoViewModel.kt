@@ -40,6 +40,11 @@ data class ProductoPedidoUI(
     val cantidad: Int
 )
 
+data class ItemPedidoExtraordinarioInput(
+    val nombre: String,
+    val cantidad: Int,
+    val unidad: String
+)
 
 data class MiPedidoUI(
     val id: String,
@@ -132,6 +137,94 @@ class PedidoViewModel(
         }
     }
 
+
+    fun confirmarPedidoExtraordinario(
+        userId: String,
+        email: String,
+        items: List<ItemPedidoExtraordinarioInput>,
+        onOk: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            var pedidoIdCreado: String? = null
+            try {
+                val itemsValidos = items.map {
+                    ItemPedidoExtraordinarioInput(
+                        nombre = it.nombre.trim(),
+                        cantidad = it.cantidad,
+                        unidad = it.unidad.trim()
+                    )
+                }.filter { it.nombre.isNotBlank() && it.cantidad > 0 && it.unidad.isNotBlank() }
+
+                if (itemsValidos.isEmpty()) {
+                    onError("Agrega al menos un artículo extraordinario válido")
+                    return@launch
+                }
+
+                val pedidoCreado = supabase
+                    .from("pedidos_extraordinarios")
+                    .insert(
+                        mapOf(
+                            "empleado_id" to userId,
+                            "empleado_email" to email,
+                            "estado" to "ENVIADO"
+                        )
+                    ) {
+                        select()
+                    }
+                    .decodeSingle<JsonObject>()
+
+                val pedidoId = pedidoCreado.stringOrNull("id")
+                if (pedidoId.isNullOrBlank()) {
+                    onError("No se pudo obtener el pedido extraordinario creado")
+                    return@launch
+                }
+                pedidoIdCreado = pedidoId
+
+                supabase
+                    .from("pedido_extraordinario_detalle")
+                    .insert(
+                        itemsValidos.map { item ->
+                            mapOf(
+                                "pedido_extraordinario_id" to pedidoId,
+                                "nombre_articulo" to item.nombre,
+                                "cantidad" to item.cantidad,
+                                "unidad" to item.unidad
+                            )
+                        }
+                    )
+
+                val resumenProductos = itemsValidos.map { item ->
+                    "${item.cantidad} x ${item.nombre} (${item.unidad})"
+                }
+                enviarAvisoCorreoPedido(
+                    empleadoEmail = email,
+                    comentario = "Pedido extraordinario",
+                    productos = resumenProductos
+                )
+
+                onOk()
+            } catch (e: Exception) {
+                pedidoIdCreado?.let { pedidoId ->
+                    runCatching {
+                        supabase.from("pedidos_extraordinarios").delete {
+                            filter { eq("id", pedidoId) }
+                        }
+                    }.onFailure { cleanupError ->
+                        Log.w("PEDIDO", "No se pudo revertir pedido extraordinario incompleto", cleanupError)
+                    }
+                }
+                Log.e("PEDIDO", "Error creando pedido extraordinario", e)
+                val mensajeOriginal = e.message ?: ""
+                val mensajeUsuario = if (mensajeOriginal.isBlank()) {
+                    "No se pudo crear el pedido extraordinario"
+                } else {
+                    "No se pudo crear el pedido extraordinario: $mensajeOriginal"
+                }
+                onError(mensajeUsuario)
+            }
+        }
+    }
 
     fun confirmarPedido(
         userId: String,
@@ -391,7 +484,8 @@ class PedidoViewModel(
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { detalle ->
-                                val descripcion = detalle.stringOrNull("nombre")
+                                val descripcion = detalle.stringOrNull("nombre_articulo")
+                                    ?: detalle.stringOrNull("nombre")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
