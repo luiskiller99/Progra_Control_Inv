@@ -141,6 +141,7 @@ class PedidoViewModel(
     fun confirmarPedidoExtraordinario(
         userId: String,
         email: String,
+        prioridad: String,
         items: List<ItemPedidoExtraordinarioInput>,
         onOk: () -> Unit,
         onError: (String) -> Unit
@@ -161,13 +162,20 @@ class PedidoViewModel(
                     return@launch
                 }
 
+                val prioridadNormalizada = prioridad.trim().lowercase()
+                if (prioridadNormalizada !in setOf("alta", "media", "baja")) {
+                    onError("Selecciona una prioridad válida")
+                    return@launch
+                }
+
                 val pedidoCreado = supabase
                     .from("pedidos_extraordinarios")
                     .insert(
                         mapOf(
                             "empleado_id" to userId,
                             "empleado_email" to email,
-                            "estado" to "ENVIADO"
+                            "estado" to "ENVIADO",
+                            "comentario" to prioridadNormalizada
                         )
                     ) {
                         select()
@@ -199,7 +207,7 @@ class PedidoViewModel(
                 }
                 enviarAvisoCorreoPedido(
                     empleadoEmail = email,
-                    comentario = "Pedido extraordinario",
+                    comentario = "Pedido extraordinario ($prioridadNormalizada)",
                     productos = resumenProductos
                 )
 

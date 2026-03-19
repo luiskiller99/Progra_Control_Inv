@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
@@ -75,6 +76,11 @@ private data class ItemPedidoExtraordinarioUI(
     val cantidad: Int,
     val unidad: String
 )
+
+private val prioridadesExtraordinarias = listOf("alta", "media", "baja")
+
+private fun formatearPrioridad(prioridad: String): String =
+    prioridad.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
@@ -339,6 +345,8 @@ private fun PedidoExtraordinarioVisualCard(
     onCantidadExtraChange: (String) -> Unit,
     unidadExtra: String,
     onUnidadExtraChange: (String) -> Unit,
+    prioridadExtra: String,
+    onPrioridadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
@@ -382,6 +390,21 @@ private fun PedidoExtraordinarioVisualCard(
             )
 
             Spacer(Modifier.height(8.dp))
+            Text("Prioridad", style = MaterialTheme.typography.labelLarge)
+            prioridadesExtraordinarias.forEach { prioridad ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = prioridadExtra == prioridad,
+                        onClick = { onPrioridadExtraChange(prioridad) }
+                    )
+                    Text(formatearPrioridad(prioridad))
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
             Button(
                 onClick = onAgregarExtraordinario,
                 modifier = Modifier.fillMaxWidth()
@@ -446,6 +469,8 @@ private fun PedidoExtraordinarioDialog(
     onCantidadExtraChange: (String) -> Unit,
     unidadExtra: String,
     onUnidadExtraChange: (String) -> Unit,
+    prioridadExtra: String,
+    onPrioridadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
@@ -484,6 +509,8 @@ private fun PedidoExtraordinarioDialog(
                     onCantidadExtraChange = onCantidadExtraChange,
                     unidadExtra = unidadExtra,
                     onUnidadExtraChange = onUnidadExtraChange,
+                    prioridadExtra = prioridadExtra,
+                    onPrioridadExtraChange = onPrioridadExtraChange,
                     itemsExtraordinarios = itemsExtraordinarios,
                     onAgregarExtraordinario = onAgregarExtraordinario,
                     onQuitarExtraordinario = onQuitarExtraordinario,
@@ -609,6 +636,7 @@ fun PedidoEmpleadoScreen(
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
     var unidadExtraordinaria by remember { mutableStateOf("") }
+    var prioridadExtraordinaria by remember { mutableStateOf("media") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -744,6 +772,8 @@ fun PedidoEmpleadoScreen(
                     onCantidadExtraChange = { cantidadExtraordinaria = it },
                     unidadExtra = unidadExtraordinaria,
                     onUnidadExtraChange = { unidadExtraordinaria = it },
+                    prioridadExtra = prioridadExtraordinaria,
+                    onPrioridadExtraChange = { prioridadExtraordinaria = it },
                     itemsExtraordinarios = pedidosExtraordinarios,
                     onAgregarExtraordinario = {
                         val nombre = articuloExtraordinario.trim()
@@ -792,12 +822,14 @@ fun PedidoEmpleadoScreen(
                             pedidoViewModel.confirmarPedidoExtraordinario(
                                 userId = userId,
                                 email = emailUsuario,
+                                prioridad = prioridadExtraordinaria,
                                 items = items,
                                 onOk = {
                                     pedidosExtraordinarios.clear()
                                     articuloExtraordinario = ""
                                     cantidadExtraordinaria = ""
                                     unidadExtraordinaria = ""
+                                    prioridadExtraordinaria = "media"
                                     mostrarPedidoExtraordinario = false
                                     pedidoViewModel.cargarMisPedidos(userId)
                                     scope.launch {
