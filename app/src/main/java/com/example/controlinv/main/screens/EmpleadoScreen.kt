@@ -56,6 +56,7 @@ import com.example.controlinv.R
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.ItemCarrito
+import com.example.controlinv.empleado.ItemPedidoExtraordinarioInput
 import com.example.controlinv.empleado.MiPedidoUI
 import com.example.controlinv.empleado.PedidoViewModel
 import com.example.controlinv.empleado.PedidoViewModelFactory
@@ -353,12 +354,6 @@ private fun PedidoExtraordinarioVisualCard(
                 .padding(12.dp)
         ) {
             Text("Pedido extraordinario", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Este bloque es visual para definir el flujo. Aún no se envía a Supabase.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
@@ -783,9 +778,35 @@ fun PedidoEmpleadoScreen(
                         }
                     },
                     onConfirmarExtraordinario = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                "Pedido extraordinario listo (solo visual, pendiente Supabase)"
+                        if (userId == null) {
+                            scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
+                        } else {
+                            val items = pedidosExtraordinarios.map {
+                                ItemPedidoExtraordinarioInput(
+                                    nombre = it.nombre,
+                                    cantidad = it.cantidad,
+                                    unidad = it.unidad
+                                )
+                            }
+                            val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                            pedidoViewModel.confirmarPedidoExtraordinario(
+                                userId = userId,
+                                email = emailUsuario,
+                                items = items,
+                                onOk = {
+                                    pedidosExtraordinarios.clear()
+                                    articuloExtraordinario = ""
+                                    cantidadExtraordinaria = ""
+                                    unidadExtraordinaria = ""
+                                    mostrarPedidoExtraordinario = false
+                                    pedidoViewModel.cargarMisPedidos(userId)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Pedido extraordinario creado correctamente")
+                                    }
+                                },
+                                onError = { error ->
+                                    scope.launch { snackbarHostState.showSnackbar(error) }
+                                }
                             )
                         }
                     }
