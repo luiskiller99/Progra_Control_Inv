@@ -29,7 +29,8 @@ data class PedidoUI(
     val estado: String,
     val comentario: String,
     val productos: List<String>,
-    val esExtraordinario: Boolean = false
+    val esExtraordinario: Boolean = false,
+    val prioridad: String = ""
 )
 
 @Serializable
@@ -144,7 +145,8 @@ class PedidoAdminViewModel : ViewModel() {
                         estado = pedido.estado,
                         comentario = pedido.comentario ?: "",
                         productos = productos,
-                        esExtraordinario = false
+                        esExtraordinario = false,
+                        prioridad = ""
                     )
                 }
 
@@ -172,7 +174,8 @@ class PedidoAdminViewModel : ViewModel() {
                             estado = pedido.estado,
                             comentario = pedido.prioridad ?: pedido.comentario ?: "",
                             productos = productos,
-                            esExtraordinario = true
+                            esExtraordinario = true,
+                            prioridad = pedido.prioridad ?: ""
                         )
                     }
 

@@ -199,16 +199,19 @@ private fun PedidosTabContent(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            if (pedido.prioridad.isNotBlank()) {
+                                Text(
+                                    "Prioridad: ${formatearPrioridad(pedido.prioridad)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         if (pedido.comentario.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                if (pedido.esExtraordinario) {
-                                    "Prioridad: ${pedido.comentario}"
-                                } else {
-                                    "Comentario: ${pedido.comentario}"
-                                },
+                                "Comentario: ${pedido.comentario}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -345,6 +348,8 @@ private fun PedidoExtraordinarioVisualCard(
     onCantidadExtraChange: (String) -> Unit,
     unidadExtra: String,
     onUnidadExtraChange: (String) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
     prioridadExtra: String,
     onPrioridadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
@@ -387,6 +392,15 @@ private fun PedidoExtraordinarioVisualCard(
                 label = { Text("Unidad (ej. litros, kilos)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
+            )
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = comentarioExtra,
+                onValueChange = onComentarioExtraChange,
+                label = { Text("Comentario") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
             )
 
             Spacer(Modifier.height(8.dp))
@@ -477,6 +491,8 @@ private fun PedidoExtraordinarioDialog(
     onCantidadExtraChange: (String) -> Unit,
     unidadExtra: String,
     onUnidadExtraChange: (String) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
     prioridadExtra: String,
     onPrioridadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
@@ -517,6 +533,8 @@ private fun PedidoExtraordinarioDialog(
                     onCantidadExtraChange = onCantidadExtraChange,
                     unidadExtra = unidadExtra,
                     onUnidadExtraChange = onUnidadExtraChange,
+                    comentarioExtra = comentarioExtra,
+                    onComentarioExtraChange = onComentarioExtraChange,
                     prioridadExtra = prioridadExtra,
                     onPrioridadExtraChange = onPrioridadExtraChange,
                     itemsExtraordinarios = itemsExtraordinarios,
@@ -644,6 +662,7 @@ fun PedidoEmpleadoScreen(
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
     var unidadExtraordinaria by remember { mutableStateOf("") }
+    var comentarioExtraordinario by remember { mutableStateOf("") }
     var prioridadExtraordinaria by remember { mutableStateOf("media") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -780,6 +799,8 @@ fun PedidoEmpleadoScreen(
                     onCantidadExtraChange = { cantidadExtraordinaria = it },
                     unidadExtra = unidadExtraordinaria,
                     onUnidadExtraChange = { unidadExtraordinaria = it },
+                    comentarioExtra = comentarioExtraordinario,
+                    onComentarioExtraChange = { comentarioExtraordinario = it },
                     prioridadExtra = prioridadExtraordinaria,
                     onPrioridadExtraChange = { prioridadExtraordinaria = it },
                     itemsExtraordinarios = pedidosExtraordinarios,
@@ -831,12 +852,14 @@ fun PedidoEmpleadoScreen(
                                 userId = userId,
                                 email = emailUsuario,
                                 prioridad = prioridadExtraordinaria,
+                                comentario = comentarioExtraordinario,
                                 items = items,
                                 onOk = {
                                     pedidosExtraordinarios.clear()
                                     articuloExtraordinario = ""
                                     cantidadExtraordinaria = ""
                                     unidadExtraordinaria = ""
+                                    comentarioExtraordinario = ""
                                     prioridadExtraordinaria = "media"
                                     mostrarPedidoExtraordinario = false
                                     pedidoViewModel.cargarMisPedidos(userId)

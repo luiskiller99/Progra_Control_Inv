@@ -52,7 +52,8 @@ data class MiPedidoUI(
     val estado: String,
     val comentario: String,
     val productos: List<ProductoPedidoUI>,
-    val esExtraordinario: Boolean = false
+    val esExtraordinario: Boolean = false,
+    val prioridad: String = ""
 )
 
 
@@ -143,6 +144,7 @@ class PedidoViewModel(
         userId: String,
         email: String,
         prioridad: String,
+        comentario: String,
         items: List<ItemPedidoExtraordinarioInput>,
         onOk: () -> Unit,
         onError: (String) -> Unit
@@ -169,6 +171,12 @@ class PedidoViewModel(
                     return@launch
                 }
 
+                val comentarioNormalizado = comentario.trim()
+                if (comentarioNormalizado.isBlank()) {
+                    onError("Ingresa un comentario para el pedido extraordinario")
+                    return@launch
+                }
+
                 val pedidoCreado = supabase
                     .from("pedidos_extraordinarios")
                     .insert(
@@ -176,7 +184,8 @@ class PedidoViewModel(
                             "empleado_id" to userId,
                             "empleado_email" to email,
                             "estado" to "ENVIADO",
-                            "prioridad" to prioridadNormalizada
+                            "prioridad" to prioridadNormalizada,
+                            "comentario" to comentarioNormalizado
                         )
                     ) {
                         select()
@@ -208,7 +217,7 @@ class PedidoViewModel(
                 }
                 enviarAvisoCorreoPedido(
                     empleadoEmail = email,
-                    comentario = "Pedido extraordinario ($prioridadNormalizada)",
+                    comentario = "Pedido extraordinario ($prioridadNormalizada): $comentarioNormalizado",
                     productos = resumenProductos
                 )
 
@@ -456,7 +465,8 @@ class PedidoViewModel(
                             estado = pedido.estado,
                             comentario = pedido.comentario.orEmpty(),
                             productos = productos,
-                            esExtraordinario = false
+                            esExtraordinario = false,
+                            prioridad = ""
                         )
                     }
 
@@ -513,7 +523,8 @@ class PedidoViewModel(
                             estado = pedido.estado,
                             comentario = (pedido.prioridad ?: pedido.comentario).orEmpty(),
                             productos = productos,
-                            esExtraordinario = true
+                            esExtraordinario = true,
+                            prioridad = pedido.prioridad.orEmpty()
                         )
                     }
 
