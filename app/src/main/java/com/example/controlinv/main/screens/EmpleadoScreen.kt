@@ -1,6 +1,7 @@
 package com.example.controlinv.main.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -704,7 +705,7 @@ fun PedidoEmpleadoScreen(
                     }
                     TextButton(
                         onClick = { mostrarPedidoExtraordinario = true },
-                        contentPadding = IconButtonDefaults.smallContentPadding
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text("Extra", style = MaterialTheme.typography.labelMedium)
                     }
