@@ -501,7 +501,7 @@ class PedidoViewModel(
                             id = pedido.id,
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = (pedido.prioridad ?: pedido.comentario).orEmpty(),
+                            comentario = pedido.comentario.orEmpty(),
                             productos = productos,
                             esExtraordinario = true,
                             prioridad = pedido.prioridad.orEmpty()

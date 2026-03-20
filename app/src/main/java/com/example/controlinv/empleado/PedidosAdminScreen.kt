@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -155,6 +156,17 @@ enum class PedidoFiltro {
     ACEPTADO,
     RECHAZADO
 }
+
+private enum class AccionPedidoExtraordinario {
+    ACEPTAR,
+    RECHAZAR
+}
+
+private data class ConfirmacionExtraordinario(
+    val pedidoId: String,
+    val accion: AccionPedidoExtraordinario
+)
+
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
@@ -163,6 +175,7 @@ fun PedidosAdminScreen(
     val pedidos by viewModel.listaPedidos.collectAsState()
     val context = LocalContext.current
     var filtro by remember { mutableStateOf(PedidoFiltro.ENVIADO) }
+    var confirmacionExtraordinario by remember { mutableStateOf<ConfirmacionExtraordinario?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (viewModel.cargando) {
@@ -228,17 +241,36 @@ fun PedidosAdminScreen(
                             .fillMaxSize()
                     ) {
                         items(pedidosFiltrados, key = { it.id }) { pedido ->
+                            val mostrarAcciones = pedido.estado.equals("ENVIADO", ignoreCase = true) &&
+                                (
+                                    (filtro == PedidoFiltro.ENVIADO && !pedido.esExtraordinario) ||
+                                        (filtro == PedidoFiltro.EXTRAORDINARIO && pedido.esExtraordinario)
+                                    )
                             PedidoItem(
                                 pedido = pedido,
-                                mostrarAcciones = filtro == PedidoFiltro.ENVIADO,
+                                mostrarAcciones = mostrarAcciones,
                                 onAceptar = {
                                     if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
-                                        viewModel.aceptarPedido(pedido.id)
+                                        if (pedido.esExtraordinario) {
+                                            confirmacionExtraordinario = ConfirmacionExtraordinario(
+                                                pedidoId = pedido.id,
+                                                accion = AccionPedidoExtraordinario.ACEPTAR
+                                            )
+                                        } else {
+                                            viewModel.aceptarPedido(pedido.id)
+                                        }
                                     }
                                 },
                                 onRechazar = {
                                     if (pedido.estado.equals("ENVIADO", ignoreCase = true)) {
-                                        viewModel.rechazarPedido(pedido.id)
+                                        if (pedido.esExtraordinario) {
+                                            confirmacionExtraordinario = ConfirmacionExtraordinario(
+                                                pedidoId = pedido.id,
+                                                accion = AccionPedidoExtraordinario.RECHAZAR
+                                            )
+                                        } else {
+                                            viewModel.rechazarPedido(pedido.id)
+                                        }
                                     }
                                 }
                             )
@@ -255,6 +287,42 @@ fun PedidosAdminScreen(
                 .padding(16.dp)
         ) {
             Icon(Icons.Filled.Download, contentDescription = "Descargar pedidos")
+        }
+
+        val confirmacion = confirmacionExtraordinario
+        if (confirmacion != null) {
+            val accionTexto = if (confirmacion.accion == AccionPedidoExtraordinario.ACEPTAR) {
+                "aceptar"
+            } else {
+                "rechazar"
+            }
+            AlertDialog(
+                onDismissRequest = { confirmacionExtraordinario = null },
+                title = { Text("Confirmar pedido extraordinario") },
+                text = {
+                    Text("¿Está seguro de $accionTexto este pedido extraordinario?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            when (confirmacion.accion) {
+                                AccionPedidoExtraordinario.ACEPTAR ->
+                                    viewModel.aceptarPedidoExtraordinario(confirmacion.pedidoId)
+                                AccionPedidoExtraordinario.RECHAZAR ->
+                                    viewModel.rechazarPedidoExtraordinario(confirmacion.pedidoId)
+                            }
+                            confirmacionExtraordinario = null
+                        }
+                    ) {
+                        Text("Sí, $accionTexto")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { confirmacionExtraordinario = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 
@@ -301,6 +369,13 @@ fun PedidoItem(
                 "Estado: ${pedido.estado}",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (pedido.esExtraordinario) {
+                Text(
+                    "Tipo: Extraordinario",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             if (pedido.esExtraordinario && pedido.prioridad.isNotBlank()) {
                 Text(
                     "Prioridad: ${formatearPrioridadAdmin(pedido.prioridad)}",

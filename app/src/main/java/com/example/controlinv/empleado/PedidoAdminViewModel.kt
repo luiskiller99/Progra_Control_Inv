@@ -172,7 +172,7 @@ class PedidoAdminViewModel : ViewModel() {
                             empleadoEmail = pedido.empleado_email ?: "Desconocido",
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.prioridad ?: pedido.comentario ?: "",
+                            comentario = pedido.comentario.orEmpty(),
                             productos = productos,
                             esExtraordinario = true,
                             prioridad = pedido.prioridad ?: ""
@@ -203,6 +203,27 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
+    fun aceptarPedidoExtraordinario(pedidoId: String) {
+        viewModelScope.launch {
+            try {
+                supabase.postgrest.rpc(
+                    "aceptar_pedido_extraordinario",
+                    mapOf("p_pedido_id" to pedidoId)
+                )
+                _listaPedidos.value = _listaPedidos.value.map { pedido ->
+                    if (pedido.id == pedidoId && pedido.esExtraordinario) {
+                        pedido.copy(estado = "ACEPTADO")
+                    } else {
+                        pedido
+                    }
+                }
+                cargarPedidos()
+            } catch (e: Exception) {
+                Log.e("ADMIN", "Error aceptando pedido extraordinario", e)
+            }
+        }
+    }
+
     fun rechazarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
@@ -213,6 +234,27 @@ class PedidoAdminViewModel : ViewModel() {
                 cargarPedidos()
             } catch (e: Exception) {
                 Log.e("ADMIN", "Error rechazando pedido", e)
+            }
+        }
+    }
+
+    fun rechazarPedidoExtraordinario(pedidoId: String) {
+        viewModelScope.launch {
+            try {
+                supabase.postgrest.rpc(
+                    "rechazar_pedido_extraordinario",
+                    mapOf("p_pedido_id" to pedidoId)
+                )
+                _listaPedidos.value = _listaPedidos.value.map { pedido ->
+                    if (pedido.id == pedidoId && pedido.esExtraordinario) {
+                        pedido.copy(estado = "RECHAZADO")
+                    } else {
+                        pedido
+                    }
+                }
+                cargarPedidos()
+            } catch (e: Exception) {
+                Log.e("ADMIN", "Error rechazando pedido extraordinario", e)
             }
         }
     }
