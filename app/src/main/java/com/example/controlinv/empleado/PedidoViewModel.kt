@@ -199,13 +199,21 @@ class PedidoViewModel(
                 }
                 pedidoIdCreado = pedidoId
 
+                val siguienteDetalleId = supabase
+                    .from("pedido_extraordinario_detalle")
+                    .select()
+                    .decodeList<JsonObject>()
+                    .maxOfOrNull { detalle -> detalle.longOrNull("id") ?: 0L }
+                    ?.plus(1L) ?: 1L
+
                 supabase
                     .from("pedido_extraordinario_detalle")
                     .insert(
-                        itemsValidos.map { item ->
+                        itemsValidos.mapIndexed { index, item ->
                             mapOf(
+                                "id" to (siguienteDetalleId + index),
                                 "pedido_extraordinario_id" to pedidoId,
-                                "nombre_articulo" to item.nombre,
+                                "nombre" to item.nombre,
                                 "cantidad" to item.cantidad,
                                 "unidad" to item.unidad
                             )
@@ -503,8 +511,8 @@ class PedidoViewModel(
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { detalle ->
-                                val descripcion = detalle.stringOrNull("nombre_articulo")
-                                    ?: detalle.stringOrNull("nombre")
+                                val descripcion = detalle.stringOrNull("nombre")
+                                    ?: detalle.stringOrNull("nombre_articulo")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
@@ -572,3 +580,6 @@ private fun JsonObject.stringOrNull(key: String): String? {
 
 private fun JsonObject.intOrNull(key: String): Int? =
     this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+
+private fun JsonObject.longOrNull(key: String): Long? =
+    this[key]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
