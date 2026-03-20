@@ -172,7 +172,7 @@ class PedidoAdminViewModel : ViewModel() {
                             empleadoEmail = pedido.empleado_email ?: "Desconocido",
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.comentario ?: "",
+                            comentario = pedido.prioridad ?: pedido.comentario ?: "",
                             productos = productos,
                             esExtraordinario = true,
                             prioridad = pedido.prioridad ?: ""
