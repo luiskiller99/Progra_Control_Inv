@@ -181,7 +181,8 @@ class PedidoViewModel(
                         JsonObject(
                             mapOf(
                                 "nombre" to JsonPrimitive(item.nombre),
-                                "cantidad" to JsonPrimitive(item.cantidad)
+                                "cantidad" to JsonPrimitive(item.cantidad),
+                                "unidad" to JsonPrimitive(item.unidad)
                             )
                         )
                     }
@@ -199,39 +200,6 @@ class PedidoViewModel(
                         )
                     )
                 )
-
-                val pedidoCreado = supabase
-                    .from("pedidos_extraordinarios")
-                    .select {
-                        filter {
-                            eq("empleado_id", userId)
-                            eq("empleado_email", email)
-                            eq("prioridad", prioridadNormalizada)
-                            eq("comentario", comentarioNormalizado)
-                        }
-                    }
-                    .decodeList<PedidoExtraordinarioEmpleado>()
-                    .maxByOrNull { it.fecha }
-
-                val pedidoIdCreado = pedidoCreado?.id
-                if (!pedidoIdCreado.isNullOrBlank()) {
-                    val detallesCreados = supabase
-                        .from("pedido_extraordinario_detalle")
-                        .select {
-                            filter { eq("pedido_extraordinario_id", pedidoIdCreado) }
-                        }
-                        .decodeList<JsonObject>()
-                        .sortedBy { detalle -> detalle.longOrNull("id") ?: Long.MAX_VALUE }
-
-                    detallesCreados.zip(itemsValidos).forEach { (detalle, item) ->
-                        val detalleId = detalle.longOrNull("id") ?: return@forEach
-                        supabase
-                            .from("pedido_extraordinario_detalle")
-                            .update(mapOf("unidad" to item.unidad)) {
-                                filter { eq("id", detalleId) }
-                            }
-                    }
-                }
 
                 val resumenProductos = itemsValidos.map { item ->
                     "${item.cantidad} x ${item.nombre} (${item.unidad})"
