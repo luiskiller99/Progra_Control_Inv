@@ -80,7 +80,7 @@ private data class ItemPedidoExtraordinarioUI(
 private val prioridadesExtraordinarias = listOf("alta", "media", "baja")
 
 private fun formatearPrioridad(prioridad: String): String =
-    prioridad.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    prioridad.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }

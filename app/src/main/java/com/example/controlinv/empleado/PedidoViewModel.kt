@@ -165,8 +165,8 @@ class PedidoViewModel(
                     return@launch
                 }
 
-                val prioridadNormalizada = prioridad.trim().lowercase()
-                if (prioridadNormalizada !in setOf("alta", "media", "baja")) {
+                val prioridadNormalizada = prioridad.trim().uppercase()
+                if (prioridadNormalizada !in setOf("ALTA", "MEDIA", "BAJA")) {
                     onError("Selecciona una prioridad válida")
                     return@launch
                 }
