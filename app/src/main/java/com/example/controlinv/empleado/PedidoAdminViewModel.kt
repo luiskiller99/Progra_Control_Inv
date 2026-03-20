@@ -49,6 +49,7 @@ data class PedidoExtraordinario(
     val estado: String,
     val empleado_id: String,
     val empleado_email: String? = null,
+    val prioridad: String? = null,
     val comentario: String? = null
 )
 
@@ -153,7 +154,8 @@ class PedidoAdminViewModel : ViewModel() {
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { detalle ->
-                                val nombre = detalle.stringOrNull("nombre")
+                                val nombre = detalle.stringOrNull("nombre_articulo")
+                                    ?: detalle.stringOrNull("nombre")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
@@ -168,7 +170,7 @@ class PedidoAdminViewModel : ViewModel() {
                             empleadoEmail = pedido.empleado_email ?: "Desconocido",
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.comentario ?: "",
+                            comentario = pedido.prioridad ?: pedido.comentario ?: "",
                             productos = productos,
                             esExtraordinario = true
                         )
