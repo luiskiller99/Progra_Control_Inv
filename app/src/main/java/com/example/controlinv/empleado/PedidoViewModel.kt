@@ -150,7 +150,6 @@ class PedidoViewModel(
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
-            var pedidoIdCreado: String? = null
             try {
                 val itemsValidos = items.map {
                     ItemPedidoExtraordinarioInput(
@@ -177,48 +176,29 @@ class PedidoViewModel(
                     return@launch
                 }
 
-                val pedidoCreado = supabase
-                    .from("pedidos_extraordinarios")
-                    .insert(
-                        mapOf(
-                            "empleado_id" to userId,
-                            "empleado_email" to email,
-                            "estado" to "ENVIADO",
-                            "prioridad" to prioridadNormalizada,
-                            "comentario" to comentarioNormalizado
-                        )
-                    ) {
-                        select()
-                    }
-                    .decodeSingle<JsonObject>()
-
-                val pedidoId = pedidoCreado.stringOrNull("id")
-                if (pedidoId.isNullOrBlank()) {
-                    onError("No se pudo obtener el pedido extraordinario creado")
-                    return@launch
-                }
-                pedidoIdCreado = pedidoId
-
-                val siguienteDetalleId = supabase
-                    .from("pedido_extraordinario_detalle")
-                    .select()
-                    .decodeList<JsonObject>()
-                    .maxOfOrNull { detalle -> detalle.longOrNull("id") ?: 0L }
-                    ?.plus(1L) ?: 1L
-
-                supabase
-                    .from("pedido_extraordinario_detalle")
-                    .insert(
-                        itemsValidos.mapIndexed { index, item ->
+                val itemsJson = JsonArray(
+                    itemsValidos.map { item ->
+                        JsonObject(
                             mapOf(
-                                "id" to (siguienteDetalleId + index),
-                                "pedido_extraordinario_id" to pedidoId,
-                                "nombre" to item.nombre,
-                                "cantidad" to item.cantidad,
-                                "unidad" to item.unidad
+                                "nombre" to JsonPrimitive(item.nombre),
+                                "cantidad" to JsonPrimitive(item.cantidad)
                             )
-                        }
+                        )
+                    }
+                )
+
+                supabase.postgrest.rpc(
+                    function = "crear_pedido_extraordinario",
+                    parameters = JsonObject(
+                        mapOf(
+                            "p_empleado_id" to JsonPrimitive(userId),
+                            "p_empleado_email" to JsonPrimitive(email),
+                            "p_prioridad" to JsonPrimitive(prioridadNormalizada),
+                            "p_items" to itemsJson,
+                            "p_comentario" to JsonPrimitive(comentarioNormalizado)
+                        )
                     )
+                )
 
                 val resumenProductos = itemsValidos.map { item ->
                     "${item.cantidad} x ${item.nombre} (${item.unidad})"
@@ -231,15 +211,6 @@ class PedidoViewModel(
 
                 onOk()
             } catch (e: Exception) {
-                pedidoIdCreado?.let { pedidoId ->
-                    runCatching {
-                        supabase.from("pedidos_extraordinarios").delete {
-                            filter { eq("id", pedidoId) }
-                        }
-                    }.onFailure { cleanupError ->
-                        Log.w("PEDIDO", "No se pudo revertir pedido extraordinario incompleto", cleanupError)
-                    }
-                }
                 Log.e("PEDIDO", "Error creando pedido extraordinario", e)
                 val mensajeOriginal = e.message ?: ""
                 val mensajeUsuario = if (mensajeOriginal.isBlank()) {
