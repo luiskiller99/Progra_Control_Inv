@@ -1,5 +1,6 @@
 package com.example.controlinv.empleado
 
+import android.app.DatePickerDialog
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
@@ -7,6 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,19 +20,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -44,12 +41,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+private val formatoFechaFiltro: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
 private fun idPedidoCorto(id: String?): String {
     if (id.isNullOrBlank()) return "000000"
@@ -85,27 +87,78 @@ private fun escaparCsv(texto: String): String =
 private fun formatearPrioridadAdmin(prioridad: String): String =
     prioridad.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
+private fun fechaPedidoLocal(fecha: String): LocalDate? =
+    runCatching { LocalDate.parse(fecha.trim().take(10)) }.getOrNull()
+
+enum class ExportacionPedidosTipo(
+    val etiqueta: String,
+    val sufijoArchivo: String
+) {
+    TODOS("Todos", "todos"),
+    PENDIENTES("Pendientes", "pendientes"),
+    EXTRAORDINARIOS("Extraordinarios", "extraordinarios"),
+    ACEPTADOS("Aceptados", "aceptados"),
+    RECHAZADOS("Rechazados", "rechazados")
+}
+
+private fun filtrarPedidosPorTipo(
+    pedidos: List<PedidoUI>,
+    filtro: PedidoFiltro
+): List<PedidoUI> = when (filtro) {
+    PedidoFiltro.ENVIADO -> pedidos.filter {
+        !it.esExtraordinario && it.estado.equals("ENVIADO", ignoreCase = true)
+    }
+    PedidoFiltro.EXTRAORDINARIO -> pedidos.filter { it.esExtraordinario }
+    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
+}
+
+private fun filtrarPedidosPorTipo(
+    pedidos: List<PedidoUI>,
+    tipo: ExportacionPedidosTipo
+): List<PedidoUI> = when (tipo) {
+    ExportacionPedidosTipo.TODOS -> pedidos
+    ExportacionPedidosTipo.PENDIENTES -> filtrarPedidosPorTipo(pedidos, PedidoFiltro.ENVIADO)
+    ExportacionPedidosTipo.EXTRAORDINARIOS -> filtrarPedidosPorTipo(pedidos, PedidoFiltro.EXTRAORDINARIO)
+    ExportacionPedidosTipo.ACEPTADOS -> filtrarPedidosPorTipo(pedidos, PedidoFiltro.ACEPTADO)
+    ExportacionPedidosTipo.RECHAZADOS -> filtrarPedidosPorTipo(pedidos, PedidoFiltro.RECHAZADO)
+}
+
 @RequiresApi(Build.VERSION_CODES.Q)
-private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
-    val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
-    if (pedidosAceptados.isEmpty()) {
-        Toast.makeText(context, "No hay pedidos aceptados para exportar", Toast.LENGTH_SHORT).show()
+fun exportarPedidosCsv(
+    context: Context,
+    pedidos: List<PedidoUI>,
+    tipo: ExportacionPedidosTipo
+) {
+    val pedidosExportables = filtrarPedidosPorTipo(pedidos, tipo)
+    if (pedidosExportables.isEmpty()) {
+        Toast.makeText(
+            context,
+            "No hay pedidos en ${tipo.etiqueta.lowercase()} para exportar",
+            Toast.LENGTH_SHORT
+        ).show()
         return
     }
 
     val fecha = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val nombreArchivo = "pedidos_bodega_$fecha.csv"
+    val nombreArchivo = "pedidos_${tipo.sufijoArchivo}_$fecha.csv"
 
     val contenido = buildString {
-        appendLine("empleado,id_pedido,estado,codigo,descripcion,cantidad")
-        pedidosAceptados.forEach { pedido ->
+        appendLine("empleado,id_pedido,fecha,estado,tipo,prioridad,comentario,codigo,descripcion,cantidad")
+        pedidosExportables.forEach { pedido ->
             val empleado = pedido.empleadoEmail
+            val tipoPedido = if (pedido.esExtraordinario) "EXTRAORDINARIO" else "NORMAL"
+            val prioridad = if (pedido.esExtraordinario) formatearPrioridadAdmin(pedido.prioridad) else ""
             if (pedido.productos.isEmpty()) {
                 appendLine(
                     listOf(
                         escaparCsv(empleado),
                         escaparCsv(idPedidoCorto(pedido.id)),
+                        escaparCsv(pedido.fecha.replace("T", " ").take(16)),
                         escaparCsv(pedido.estado),
+                        escaparCsv(tipoPedido),
+                        escaparCsv(prioridad),
+                        escaparCsv(pedido.comentario),
                         escaparCsv(""),
                         escaparCsv(""),
                         escaparCsv("")
@@ -118,7 +171,11 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
                         listOf(
                             escaparCsv(empleado),
                             escaparCsv(idPedidoCorto(pedido.id)),
+                            escaparCsv(pedido.fecha.replace("T", " ").take(16)),
                             escaparCsv(pedido.estado),
+                            escaparCsv(tipoPedido),
+                            escaparCsv(prioridad),
+                            escaparCsv(pedido.comentario),
                             escaparCsv(p.codigo),
                             escaparCsv(p.descripcion),
                             escaparCsv(p.cantidad)
@@ -144,7 +201,11 @@ private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
             writer?.write(contenido)
         }
     }.onSuccess {
-        Toast.makeText(context, "CSV guardado en Descargas", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            context,
+            "Archivo ${tipo.etiqueta.lowercase()} guardado en Descargas",
+            Toast.LENGTH_LONG
+        ).show()
     }.onFailure {
         Toast.makeText(context, "Error al exportar: ${it.message}", Toast.LENGTH_LONG).show()
     }
@@ -167,15 +228,106 @@ private data class ConfirmacionExtraordinario(
     val accion: AccionPedidoExtraordinario
 )
 
+@Composable
+private fun CompactDateFilterBar(
+    fechaInicio: LocalDate?,
+    fechaFin: LocalDate?,
+    onFechaInicioChange: (LocalDate?) -> Unit,
+    onFechaFinChange: (LocalDate?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Fecha:",
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        CompactDateField(
+            label = "Desde",
+            value = fechaInicio,
+            onValueChange = onFechaInicioChange
+        )
+        Spacer(Modifier.width(8.dp))
+        CompactDateField(
+            label = "Hasta",
+            value = fechaFin,
+            onValueChange = onFechaFinChange
+        )
+        if (fechaInicio != null || fechaFin != null) {
+            Spacer(Modifier.width(8.dp))
+            TextButton(onClick = {
+                onFechaInicioChange(null)
+                onFechaFinChange(null)
+            }) {
+                Text("Limpiar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactDateField(
+    label: String,
+    value: LocalDate?,
+    onValueChange: (LocalDate?) -> Unit
+) {
+    val context = LocalContext.current
+    val calendar = remember(value) {
+        Calendar.getInstance().apply {
+            value?.let {
+                set(it.year, it.monthValue - 1, it.dayOfMonth)
+            }
+        }
+    }
+
+    OutlinedButton(
+        onClick = {
+            DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    onValueChange(LocalDate.of(year, month + 1, dayOfMonth))
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        }
+    ) {
+        Text(
+            text = "$label ${value?.format(formatoFechaFiltro) ?: "--/--/----"}",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun PedidosAdminScreen(
     viewModel: PedidoAdminViewModel = viewModel()
 ) {
     val pedidos by viewModel.listaPedidos.collectAsState()
-    val context = LocalContext.current
     var filtro by remember { mutableStateOf(PedidoFiltro.ENVIADO) }
+    var fechaInicio by remember { mutableStateOf<LocalDate?>(null) }
+    var fechaFin by remember { mutableStateOf<LocalDate?>(null) }
     var confirmacionExtraordinario by remember { mutableStateOf<ConfirmacionExtraordinario?>(null) }
+
+    val fechaMin = when {
+        fechaInicio != null && fechaFin != null && fechaInicio!! <= fechaFin!! -> fechaInicio
+        fechaInicio != null && fechaFin != null -> fechaFin
+        else -> fechaInicio ?: fechaFin
+    }
+    val fechaMax = when {
+        fechaInicio != null && fechaFin != null && fechaInicio!! <= fechaFin!! -> fechaFin
+        fechaInicio != null && fechaFin != null -> fechaInicio
+        else -> fechaFin ?: fechaInicio
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (viewModel.cargando) {
@@ -209,23 +361,33 @@ fun PedidosAdminScreen(
                     TextButton(onClick = { filtro = PedidoFiltro.ENVIADO }) {
                         Text("Pendientes")
                     }
-                    TextButton(onClick = { filtro = PedidoFiltro.EXTRAORDINARIO}) {
+                    TextButton(onClick = { filtro = PedidoFiltro.EXTRAORDINARIO }) {
                         Text("Extraordinarios")
                     }
-                    TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO}) {
+                    TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO }) {
                         Text("Aceptados")
                     }
                     TextButton(onClick = { filtro = PedidoFiltro.RECHAZADO }) {
                         Text("Rechazados")
                     }
                 }
-                val pedidosFiltrados = when (filtro) {
-                    PedidoFiltro.ENVIADO -> pedidos.filter {
-                        !it.esExtraordinario && it.estado.equals("ENVIADO", ignoreCase = true)
-                    }
-                    PedidoFiltro.EXTRAORDINARIO -> pedidos.filter { it.esExtraordinario }
-                    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
-                    PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
+
+                CompactDateFilterBar(
+                    fechaInicio = fechaInicio,
+                    fechaFin = fechaFin,
+                    onFechaInicioChange = { fechaInicio = it },
+                    onFechaFinChange = { fechaFin = it }
+                )
+
+                val pedidosFiltrados = filtrarPedidosPorTipo(pedidos, filtro).filter { pedido ->
+                    val fechaPedido = fechaPedidoLocal(pedido.fecha)
+                    val cumpleInicio = fechaMin?.let { inicio ->
+                        fechaPedido?.let { !it.isBefore(inicio) } ?: false
+                    } ?: true
+                    val cumpleFin = fechaMax?.let { fin ->
+                        fechaPedido?.let { !it.isAfter(fin) } ?: false
+                    } ?: true
+                    cumpleInicio && cumpleFin
                 }
 
                 if (pedidosFiltrados.isEmpty()) {
@@ -237,8 +399,7 @@ fun PedidosAdminScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         items(pedidosFiltrados, key = { it.id }) { pedido ->
                             val mostrarAcciones = pedido.estado.equals("ENVIADO", ignoreCase = true) &&
@@ -280,15 +441,6 @@ fun PedidosAdminScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = { exportarPedidosCsv(context, pedidos) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Filled.Download, contentDescription = "Descargar pedidos")
-        }
-
         val confirmacion = confirmacionExtraordinario
         if (confirmacion != null) {
             val accionTexto = if (confirmacion.accion == AccionPedidoExtraordinario.ACEPTAR) {
@@ -308,6 +460,7 @@ fun PedidosAdminScreen(
                             when (confirmacion.accion) {
                                 AccionPedidoExtraordinario.ACEPTAR ->
                                     viewModel.aceptarPedidoExtraordinario(confirmacion.pedidoId)
+
                                 AccionPedidoExtraordinario.RECHAZAR ->
                                     viewModel.rechazarPedidoExtraordinario(confirmacion.pedidoId)
                             }
@@ -325,7 +478,6 @@ fun PedidosAdminScreen(
             )
         }
     }
-
 }
 
 @Composable
@@ -346,10 +498,8 @@ fun PedidoItem(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-
-            // 📧 Email
             Text(
-                pedido.empleadoEmail ?: "Empleado desconocido",
+                pedido.empleadoEmail,
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
@@ -360,7 +510,6 @@ fun PedidoItem(
 
             Spacer(Modifier.height(4.dp))
 
-            // 📅 Fecha + Estado
             Text(
                 text = "Fecha: $fechaCorta",
                 style = MaterialTheme.typography.bodySmall
@@ -391,10 +540,7 @@ fun PedidoItem(
 
             Spacer(Modifier.height(8.dp))
 
-            // 📦 Detalle
             Text("Productos:", style = MaterialTheme.typography.labelMedium)
-            //Text("* ${pedido.productos} *", style = MaterialTheme.typography.labelMedium)
-
 
             pedido.productos.forEach { productoTexto ->
                 Text(
@@ -403,11 +549,9 @@ fun PedidoItem(
                 )
             }
 
-
             if (mostrarAcciones) {
                 Spacer(Modifier.height(12.dp))
 
-                // ✅❌ Botones
                 Row(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.fillMaxWidth()
