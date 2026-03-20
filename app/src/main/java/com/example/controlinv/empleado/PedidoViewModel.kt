@@ -40,6 +40,11 @@ data class ProductoPedidoUI(
     val cantidad: Int
 )
 
+data class ItemPedidoExtraordinarioInput(
+    val nombre: String,
+    val cantidad: Int,
+    val unidad: String
+)
 
 data class MiPedidoUI(
     val id: String,
@@ -47,7 +52,8 @@ data class MiPedidoUI(
     val estado: String,
     val comentario: String,
     val productos: List<ProductoPedidoUI>,
-    val esExtraordinario: Boolean = false
+    val esExtraordinario: Boolean = false,
+    val prioridad: String = ""
 )
 
 
@@ -57,6 +63,7 @@ data class PedidoExtraordinarioEmpleado(
     val fecha: String,
     val estado: String,
     val empleado_id: String,
+    val prioridad: String? = null,
     val comentario: String? = null
 )
 
@@ -132,6 +139,89 @@ class PedidoViewModel(
         }
     }
 
+
+    fun confirmarPedidoExtraordinario(
+        userId: String,
+        email: String,
+        prioridad: String,
+        comentario: String,
+        items: List<ItemPedidoExtraordinarioInput>,
+        onOk: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val itemsValidos = items.map {
+                    ItemPedidoExtraordinarioInput(
+                        nombre = it.nombre.trim(),
+                        cantidad = it.cantidad,
+                        unidad = it.unidad.trim()
+                    )
+                }.filter { it.nombre.isNotBlank() && it.cantidad > 0 && it.unidad.isNotBlank() }
+
+                if (itemsValidos.isEmpty()) {
+                    onError("Agrega al menos un artículo extraordinario válido")
+                    return@launch
+                }
+
+                val prioridadNormalizada = prioridad.trim().uppercase()
+                if (prioridadNormalizada !in setOf("ALTA", "MEDIA", "BAJA")) {
+                    onError("Selecciona una prioridad válida")
+                    return@launch
+                }
+
+                val comentarioNormalizado = comentario.trim()
+                if (comentarioNormalizado.isBlank()) {
+                    onError("Ingresa un comentario para el pedido extraordinario")
+                    return@launch
+                }
+
+                val itemsJson = JsonArray(
+                    itemsValidos.map { item ->
+                        JsonObject(
+                            mapOf(
+                                "nombre" to JsonPrimitive(item.nombre),
+                                "cantidad" to JsonPrimitive(item.cantidad)
+                            )
+                        )
+                    }
+                )
+
+                supabase.postgrest.rpc(
+                    function = "crear_pedido_extraordinario",
+                    parameters = JsonObject(
+                        mapOf(
+                            "p_empleado_id" to JsonPrimitive(userId),
+                            "p_empleado_email" to JsonPrimitive(email),
+                            "p_prioridad" to JsonPrimitive(prioridadNormalizada),
+                            "p_items" to itemsJson,
+                            "p_comentario" to JsonPrimitive(comentarioNormalizado)
+                        )
+                    )
+                )
+
+                val resumenProductos = itemsValidos.map { item ->
+                    "${item.cantidad} x ${item.nombre} (${item.unidad})"
+                }
+                enviarAvisoCorreoPedido(
+                    empleadoEmail = email,
+                    comentario = "Pedido extraordinario ($prioridadNormalizada): $comentarioNormalizado",
+                    productos = resumenProductos
+                )
+
+                onOk()
+            } catch (e: Exception) {
+                Log.e("PEDIDO", "Error creando pedido extraordinario", e)
+                val mensajeOriginal = e.message ?: ""
+                val mensajeUsuario = if (mensajeOriginal.isBlank()) {
+                    "No se pudo crear el pedido extraordinario"
+                } else {
+                    "No se pudo crear el pedido extraordinario: $mensajeOriginal"
+                }
+                onError(mensajeUsuario)
+            }
+        }
+    }
 
     fun confirmarPedido(
         userId: String,
@@ -354,7 +444,8 @@ class PedidoViewModel(
                             estado = pedido.estado,
                             comentario = pedido.comentario.orEmpty(),
                             productos = productos,
-                            esExtraordinario = false
+                            esExtraordinario = false,
+                            prioridad = ""
                         )
                     }
 
@@ -392,6 +483,7 @@ class PedidoViewModel(
                             .orEmpty()
                             .map { detalle ->
                                 val descripcion = detalle.stringOrNull("nombre")
+                                    ?: detalle.stringOrNull("nombre_articulo")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
@@ -410,7 +502,8 @@ class PedidoViewModel(
                             estado = pedido.estado,
                             comentario = pedido.comentario.orEmpty(),
                             productos = productos,
-                            esExtraordinario = true
+                            esExtraordinario = true,
+                            prioridad = pedido.prioridad.orEmpty()
                         )
                     }
 
