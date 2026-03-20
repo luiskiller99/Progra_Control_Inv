@@ -391,16 +391,24 @@ private fun PedidoExtraordinarioVisualCard(
 
             Spacer(Modifier.height(8.dp))
             Text("Prioridad", style = MaterialTheme.typography.labelLarge)
-            prioridadesExtraordinarias.forEach { prioridad ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = prioridadExtra == prioridad,
-                        onClick = { onPrioridadExtraChange(prioridad) }
-                    )
-                    Text(formatearPrioridad(prioridad))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                prioridadesExtraordinarias.forEach { prioridad ->
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = prioridadExtra == prioridad,
+                            onClick = { onPrioridadExtraChange(prioridad) }
+                        )
+                        Text(
+                            text = formatearPrioridad(prioridad),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
 
@@ -417,7 +425,7 @@ private fun PedidoExtraordinarioVisualCard(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 180.dp)
+                        .heightIn(max = 120.dp)
                 ) {
                     items(itemsExtraordinarios.size, key = { index -> "extra-$index" }) { index ->
                         val item = itemsExtraordinarios[index]

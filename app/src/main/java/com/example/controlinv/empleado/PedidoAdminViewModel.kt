@@ -49,6 +49,7 @@ data class PedidoExtraordinario(
     val estado: String,
     val empleado_id: String,
     val empleado_email: String? = null,
+    val prioridad: String? = null,
     val comentario: String? = null
 )
 
@@ -169,7 +170,7 @@ class PedidoAdminViewModel : ViewModel() {
                             empleadoEmail = pedido.empleado_email ?: "Desconocido",
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.comentario ?: "",
+                            comentario = pedido.prioridad ?: pedido.comentario ?: "",
                             productos = productos,
                             esExtraordinario = true
                         )

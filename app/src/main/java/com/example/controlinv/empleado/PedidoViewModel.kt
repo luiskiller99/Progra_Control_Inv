@@ -62,6 +62,7 @@ data class PedidoExtraordinarioEmpleado(
     val fecha: String,
     val estado: String,
     val empleado_id: String,
+    val prioridad: String? = null,
     val comentario: String? = null
 )
 
@@ -175,7 +176,7 @@ class PedidoViewModel(
                             "empleado_id" to userId,
                             "empleado_email" to email,
                             "estado" to "ENVIADO",
-                            "comentario" to prioridadNormalizada
+                            "prioridad" to prioridadNormalizada
                         )
                     ) {
                         select()
@@ -510,7 +511,7 @@ class PedidoViewModel(
                             id = pedido.id,
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.comentario.orEmpty(),
+                            comentario = (pedido.prioridad ?: pedido.comentario).orEmpty(),
                             productos = productos,
                             esExtraordinario = true
                         )
