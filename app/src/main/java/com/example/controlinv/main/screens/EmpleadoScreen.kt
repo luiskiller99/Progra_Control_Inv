@@ -24,16 +24,20 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +57,7 @@ import com.example.controlinv.R
 import com.example.controlinv.auth.SUPABASE_URL
 import com.example.controlinv.auth.supabase
 import com.example.controlinv.empleado.ItemCarrito
+import com.example.controlinv.empleado.ItemPedidoExtraordinarioInput
 import com.example.controlinv.empleado.MiPedidoUI
 import com.example.controlinv.empleado.PedidoViewModel
 import com.example.controlinv.empleado.PedidoViewModelFactory
@@ -71,6 +76,11 @@ private data class ItemPedidoExtraordinarioUI(
     val cantidad: Int,
     val unidad: String
 )
+
+private val prioridadesExtraordinarias = listOf("alta", "media", "baja")
+
+private fun formatearPrioridad(prioridad: String): String =
+    prioridad.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
 private fun resolverImagenProducto(item: Inventario): String? {
     val candidato = item.imagen?.takeIf { it.isNotBlank() }
@@ -189,16 +199,19 @@ private fun PedidosTabContent(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            if (pedido.prioridad.isNotBlank()) {
+                                Text(
+                                    "Prioridad: ${formatearPrioridad(pedido.prioridad)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         if (pedido.comentario.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                if (pedido.esExtraordinario) {
-                                    "Prioridad: ${pedido.comentario}"
-                                } else {
-                                    "Comentario: ${pedido.comentario}"
-                                },
+                                "Comentario: ${pedido.comentario}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -231,7 +244,7 @@ private fun CarritoTabContent(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Text("Carrito normal (${carrito.size})", style = MaterialTheme.typography.titleMedium)
+            Text("Carrito (${carrito.size})", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
             var editarProductoId by remember { mutableStateOf<String?>(null) }
@@ -335,15 +348,18 @@ private fun PedidoExtraordinarioVisualCard(
     onCantidadExtraChange: (String) -> Unit,
     unidadExtra: String,
     onUnidadExtraChange: (String) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
+    prioridadExtra: String,
+    onPrioridadExtraChange: (String) -> Unit,
     itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
     onAgregarExtraordinario: () -> Unit,
     onQuitarExtraordinario: (Int) -> Unit,
     onConfirmarExtraordinario: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 0.dp)
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier
@@ -351,12 +367,6 @@ private fun PedidoExtraordinarioVisualCard(
                 .padding(12.dp)
         ) {
             Text("Pedido extraordinario", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Este bloque es visual para definir el flujo. Aún no se envía a Supabase.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
@@ -385,6 +395,38 @@ private fun PedidoExtraordinarioVisualCard(
             )
 
             Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = comentarioExtra,
+                onValueChange = onComentarioExtraChange,
+                label = { Text("Comentario") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Text("Prioridad", style = MaterialTheme.typography.labelLarge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                prioridadesExtraordinarias.forEach { prioridad ->
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = prioridadExtra == prioridad,
+                            onClick = { onPrioridadExtraChange(prioridad) }
+                        )
+                        Text(
+                            text = formatearPrioridad(prioridad),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
             Button(
                 onClick = onAgregarExtraordinario,
                 modifier = Modifier.fillMaxWidth()
@@ -397,7 +439,7 @@ private fun PedidoExtraordinarioVisualCard(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 180.dp)
+                        .heightIn(max = 120.dp)
                 ) {
                     items(itemsExtraordinarios.size, key = { index -> "extra-$index" }) { index ->
                         val item = itemsExtraordinarios[index]
@@ -435,6 +477,74 @@ private fun PedidoExtraordinarioVisualCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Confirmar pedido extraordinario")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PedidoExtraordinarioDialog(
+    onDismiss: () -> Unit,
+    nombreArticuloExtra: String,
+    onNombreArticuloExtraChange: (String) -> Unit,
+    cantidadExtra: String,
+    onCantidadExtraChange: (String) -> Unit,
+    unidadExtra: String,
+    onUnidadExtraChange: (String) -> Unit,
+    comentarioExtra: String,
+    onComentarioExtraChange: (String) -> Unit,
+    prioridadExtra: String,
+    onPrioridadExtraChange: (String) -> Unit,
+    itemsExtraordinarios: List<ItemPedidoExtraordinarioUI>,
+    onAgregarExtraordinario: () -> Unit,
+    onQuitarExtraordinario: (Int) -> Unit,
+    onConfirmarExtraordinario: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Pedido extraordinario",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Text("Cerrar")
+                    }
+                }
+
+                PedidoExtraordinarioVisualCard(
+                    nombreArticuloExtra = nombreArticuloExtra,
+                    onNombreArticuloExtraChange = onNombreArticuloExtraChange,
+                    cantidadExtra = cantidadExtra,
+                    onCantidadExtraChange = onCantidadExtraChange,
+                    unidadExtra = unidadExtra,
+                    onUnidadExtraChange = onUnidadExtraChange,
+                    comentarioExtra = comentarioExtra,
+                    onComentarioExtraChange = onComentarioExtraChange,
+                    prioridadExtra = prioridadExtra,
+                    onPrioridadExtraChange = onPrioridadExtraChange,
+                    itemsExtraordinarios = itemsExtraordinarios,
+                    onAgregarExtraordinario = onAgregarExtraordinario,
+                    onQuitarExtraordinario = onQuitarExtraordinario,
+                    onConfirmarExtraordinario = onConfirmarExtraordinario,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                )
             }
         }
     }
@@ -552,9 +662,12 @@ fun PedidoEmpleadoScreen(
     var articuloExtraordinario by remember { mutableStateOf("") }
     var cantidadExtraordinaria by remember { mutableStateOf("") }
     var unidadExtraordinaria by remember { mutableStateOf("") }
+    var comentarioExtraordinario by remember { mutableStateOf("") }
+    var prioridadExtraordinaria by remember { mutableStateOf("media") }
     val pedidosExtraordinarios = remember { mutableStateListOf<ItemPedidoExtraordinarioUI>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var mostrarPedidoExtraordinario by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         pedidoViewModel.refrescarInventario()
@@ -588,6 +701,12 @@ fun PedidoEmpleadoScreen(
                         IconButton(onClick = { pedidoViewModel.cargarMisPedidos(userId) }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Actualizar pedidos")
                         }
+                    }
+                    TextButton(
+                        onClick = { mostrarPedidoExtraordinario = true },
+                        contentPadding = IconButtonDefaults.smallContentPadding
+                    ) {
+                        Text("Extra", style = MaterialTheme.typography.labelMedium)
                     }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Salir")
@@ -624,99 +743,42 @@ fun PedidoEmpleadoScreen(
                 }
 
                 EmpleadoTab.CARRITO -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item {
-                            CarritoTabContent(
-                                carrito = pedidoViewModel.carrito,
+                    CarritoTabContent(
+                        carrito = pedidoViewModel.carrito,
+                        comentario = comentarioPedido,
+                        onComentarioChange = { comentarioPedido = it },
+                        onSumar = { id: String ->
+                            val item = pedidoViewModel.carrito.find { it.producto.id == id }
+                            if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
+                        },
+                        onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
+                        onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
+                        onActualizarCantidad = { id: String, cantidad: Int ->
+                            pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
+                        },
+                        onConfirmar = {
+                            if (userId == null) {
+                                scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
+                                return@CarritoTabContent
+                            }
+
+                            val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                            pedidoViewModel.confirmarPedido(
+                                userId = userId,
+                                email = emailUsuario,
                                 comentario = comentarioPedido,
-                                onComentarioChange = { comentarioPedido = it },
-                                onSumar = { id: String ->
-                                    val item = pedidoViewModel.carrito.find { it.producto.id == id }
-                                    if (item != null) pedidoViewModel.agregarAlCarrito(item.producto, 1)
-                                },
-                                onRestar = { id: String -> pedidoViewModel.restarDelCarrito(id) },
-                                onEliminar = { id: String -> pedidoViewModel.quitarDelCarrito(id) },
-                                onActualizarCantidad = { id: String, cantidad: Int ->
-                                    pedidoViewModel.actualizarCantidadCarrito(id, cantidad)
-                                },
-                                onConfirmar = {
-                                    if (userId == null) {
-                                        scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
-                                        return@CarritoTabContent
-                                    }
-
-                                    val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
-                                    pedidoViewModel.confirmarPedido(
-                                        userId = userId,
-                                        email = emailUsuario,
-                                        comentario = comentarioPedido,
-                                        onOk = {
-                                            comentarioPedido = ""
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Pedido creado correctamente")
-                                            }
-                                        },
-                                        onError = { error ->
-                                            scope.launch { snackbarHostState.showSnackbar(error) }
-                                        }
-                                    )
-                                }
-                            )
-                        }
-
-                        item { Spacer(Modifier.height(8.dp)) }
-
-                        item {
-                            PedidoExtraordinarioVisualCard(
-                                nombreArticuloExtra = articuloExtraordinario,
-                                onNombreArticuloExtraChange = { articuloExtraordinario = it },
-                                cantidadExtra = cantidadExtraordinaria,
-                                onCantidadExtraChange = { cantidadExtraordinaria = it },
-                                unidadExtra = unidadExtraordinaria,
-                                onUnidadExtraChange = { unidadExtraordinaria = it },
-                                itemsExtraordinarios = pedidosExtraordinarios,
-                                onAgregarExtraordinario = {
-                                    val nombre = articuloExtraordinario.trim()
-                                    val cantidad = cantidadExtraordinaria.toIntOrNull()
-                                    val unidad = unidadExtraordinaria.trim()
-                                    when {
-                                        nombre.isBlank() -> {
-                                            scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
-                                        }
-
-                                        cantidad == null || cantidad <= 0 -> {
-                                            scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
-                                        }
-
-                                        unidad.isBlank() -> {
-                                            scope.launch { snackbarHostState.showSnackbar("Ingresa la unidad del artículo") }
-                                        }
-
-                                        else -> {
-                                            pedidosExtraordinarios.add(
-                                                ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad, unidad = unidad)
-                                            )
-                                            articuloExtraordinario = ""
-                                            cantidadExtraordinaria = ""
-                                            unidadExtraordinaria = ""
-                                        }
-                                    }
-                                },
-                                onQuitarExtraordinario = { index ->
-                                    if (index in pedidosExtraordinarios.indices) {
-                                        pedidosExtraordinarios.removeAt(index)
-                                    }
-                                },
-                                onConfirmarExtraordinario = {
+                                onOk = {
+                                    comentarioPedido = ""
                                     scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "Pedido extraordinario listo (solo visual, pendiente Supabase)"
-                                        )
+                                        snackbarHostState.showSnackbar("Pedido creado correctamente")
                                     }
+                                },
+                                onError = { error ->
+                                    scope.launch { snackbarHostState.showSnackbar(error) }
                                 }
                             )
                         }
-                    }
+                    )
                 }
 
                 EmpleadoTab.PEDIDOS -> {
@@ -726,6 +788,92 @@ fun PedidoEmpleadoScreen(
                         onRecargar = { pedidoViewModel.cargarMisPedidos(userId) }
                     )
                 }
+            }
+
+            if (mostrarPedidoExtraordinario) {
+                PedidoExtraordinarioDialog(
+                    onDismiss = { mostrarPedidoExtraordinario = false },
+                    nombreArticuloExtra = articuloExtraordinario,
+                    onNombreArticuloExtraChange = { articuloExtraordinario = it },
+                    cantidadExtra = cantidadExtraordinaria,
+                    onCantidadExtraChange = { cantidadExtraordinaria = it },
+                    unidadExtra = unidadExtraordinaria,
+                    onUnidadExtraChange = { unidadExtraordinaria = it },
+                    comentarioExtra = comentarioExtraordinario,
+                    onComentarioExtraChange = { comentarioExtraordinario = it },
+                    prioridadExtra = prioridadExtraordinaria,
+                    onPrioridadExtraChange = { prioridadExtraordinaria = it },
+                    itemsExtraordinarios = pedidosExtraordinarios,
+                    onAgregarExtraordinario = {
+                        val nombre = articuloExtraordinario.trim()
+                        val cantidad = cantidadExtraordinaria.toIntOrNull()
+                        val unidad = unidadExtraordinaria.trim()
+                        when {
+                            nombre.isBlank() -> {
+                                scope.launch { snackbarHostState.showSnackbar("Ingresa nombre de artículo extraordinario") }
+                            }
+
+                            cantidad == null || cantidad <= 0 -> {
+                                scope.launch { snackbarHostState.showSnackbar("Ingresa una cantidad válida") }
+                            }
+
+                            unidad.isBlank() -> {
+                                scope.launch { snackbarHostState.showSnackbar("Ingresa la unidad del artículo") }
+                            }
+
+                            else -> {
+                                pedidosExtraordinarios.add(
+                                    ItemPedidoExtraordinarioUI(nombre = nombre, cantidad = cantidad, unidad = unidad)
+                                )
+                                articuloExtraordinario = ""
+                                cantidadExtraordinaria = ""
+                                unidadExtraordinaria = ""
+                            }
+                        }
+                    },
+                    onQuitarExtraordinario = { index ->
+                        if (index in pedidosExtraordinarios.indices) {
+                            pedidosExtraordinarios.removeAt(index)
+                        }
+                    },
+                    onConfirmarExtraordinario = {
+                        if (userId == null) {
+                            scope.launch { snackbarHostState.showSnackbar("No hay usuario autenticado") }
+                        } else {
+                            val items = pedidosExtraordinarios.map {
+                                ItemPedidoExtraordinarioInput(
+                                    nombre = it.nombre,
+                                    cantidad = it.cantidad,
+                                    unidad = it.unidad
+                                )
+                            }
+                            val emailUsuario = supabase.auth.currentUserOrNull()?.email ?: "desconocido@local"
+                            pedidoViewModel.confirmarPedidoExtraordinario(
+                                userId = userId,
+                                email = emailUsuario,
+                                prioridad = prioridadExtraordinaria,
+                                comentario = comentarioExtraordinario,
+                                items = items,
+                                onOk = {
+                                    pedidosExtraordinarios.clear()
+                                    articuloExtraordinario = ""
+                                    cantidadExtraordinaria = ""
+                                    unidadExtraordinaria = ""
+                                    comentarioExtraordinario = ""
+                                    prioridadExtraordinaria = "media"
+                                    mostrarPedidoExtraordinario = false
+                                    pedidoViewModel.cargarMisPedidos(userId)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Pedido extraordinario creado correctamente")
+                                    }
+                                },
+                                onError = { error ->
+                                    scope.launch { snackbarHostState.showSnackbar(error) }
+                                }
+                            )
+                        }
+                    }
+                )
             }
         }
     }

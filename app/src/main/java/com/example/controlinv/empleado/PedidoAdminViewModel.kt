@@ -29,7 +29,8 @@ data class PedidoUI(
     val estado: String,
     val comentario: String,
     val productos: List<String>,
-    val esExtraordinario: Boolean = false
+    val esExtraordinario: Boolean = false,
+    val prioridad: String = ""
 )
 
 @Serializable
@@ -49,6 +50,7 @@ data class PedidoExtraordinario(
     val estado: String,
     val empleado_id: String,
     val empleado_email: String? = null,
+    val prioridad: String? = null,
     val comentario: String? = null
 )
 
@@ -143,7 +145,8 @@ class PedidoAdminViewModel : ViewModel() {
                         estado = pedido.estado,
                         comentario = pedido.comentario ?: "",
                         productos = productos,
-                        esExtraordinario = false
+                        esExtraordinario = false,
+                        prioridad = ""
                     )
                 }
 
@@ -153,7 +156,8 @@ class PedidoAdminViewModel : ViewModel() {
                         val productos = detallesExtraordinarios[pedido.id]
                             .orEmpty()
                             .map { detalle ->
-                                val nombre = detalle.stringOrNull("nombre")
+                                val nombre = detalle.stringOrNull("nombre_articulo")
+                                    ?: detalle.stringOrNull("nombre")
                                     ?: detalle.stringOrNull("articulo")
                                     ?: detalle.stringOrNull("descripcion")
                                     ?: "Artículo extraordinario"
@@ -170,7 +174,8 @@ class PedidoAdminViewModel : ViewModel() {
                             estado = pedido.estado,
                             comentario = pedido.comentario ?: "",
                             productos = productos,
-                            esExtraordinario = true
+                            esExtraordinario = true,
+                            prioridad = pedido.prioridad ?: ""
                         )
                     }
 
