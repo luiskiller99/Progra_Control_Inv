@@ -298,6 +298,12 @@ fun PedidoItem(
                 "Estado: ${pedido.estado}",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (pedido.esExtraordinario && pedido.prioridad.isNotBlank()) {
+                Text(
+                    "Prioridad: ${pedido.prioridad}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
             if (pedido.comentario.isNotBlank()) {
                 Text(
                     "Comentario: ${pedido.comentario}",
