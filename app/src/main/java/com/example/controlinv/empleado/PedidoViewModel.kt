@@ -501,7 +501,7 @@ class PedidoViewModel(
                             id = pedido.id,
                             fecha = pedido.fecha,
                             estado = pedido.estado,
-                            comentario = pedido.comentario.orEmpty(),
+                            comentario = (pedido.prioridad ?: pedido.comentario).orEmpty(),
                             productos = productos,
                             esExtraordinario = true,
                             prioridad = pedido.prioridad.orEmpty()
@@ -552,3 +552,6 @@ private fun JsonObject.stringOrNull(key: String): String? {
 
 private fun JsonObject.intOrNull(key: String): Int? =
     this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+
+private fun JsonObject.longOrNull(key: String): Long? =
+    this[key]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
