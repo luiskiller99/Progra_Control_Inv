@@ -81,6 +81,9 @@ private fun parseProducto(productoTexto: String): ProductoExportado {
 private fun escaparCsv(texto: String): String =
     "\"" + texto.replace("\"", "\"\"") + "\""
 
+private fun formatearPrioridadAdmin(prioridad: String): String =
+    prioridad.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
 @RequiresApi(Build.VERSION_CODES.Q)
 private fun exportarPedidosCsv(context: Context, pedidos: List<PedidoUI>) {
     val pedidosAceptados = pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
@@ -298,6 +301,12 @@ fun PedidoItem(
                 "Estado: ${pedido.estado}",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (pedido.esExtraordinario && pedido.prioridad.isNotBlank()) {
+                Text(
+                    "Prioridad: ${formatearPrioridadAdmin(pedido.prioridad)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
             if (pedido.comentario.isNotBlank()) {
                 Text(
                     "Comentario: ${pedido.comentario}",
