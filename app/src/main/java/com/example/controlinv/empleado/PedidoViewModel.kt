@@ -314,7 +314,7 @@ class PedidoViewModel(
 
                 val mensajeUsuario = when {
                     mensajeOriginal.contains("Stock insuficiente", ignoreCase = true) ->
-                        "No hay stock suficiente para uno o más productos del carrito."
+                        "Stock insuficiente"
                     else -> "No se pudo crear el pedido: ${mensajeOriginal.ifBlank { "error desconocido" }}"
                 }
                 onError(mensajeUsuario)
