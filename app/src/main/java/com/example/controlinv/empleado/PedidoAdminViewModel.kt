@@ -192,13 +192,30 @@ class PedidoAdminViewModel : ViewModel() {
     fun aprobarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
-                supabase.postgrest.rpc(
-                    "aprobar_pedido",
-                    mapOf("p_pedido_id" to pedidoId)
-                )
+                val parametros = mapOf("p_pedido_id" to pedidoId)
+                val resultadoAprobar = runCatching {
+                    supabase.postgrest.rpc("aprobar_pedido", parametros)
+                }
+
+                if (resultadoAprobar.isFailure) {
+                    Log.w(
+                        "ADMIN",
+                        "Fallo aprobar_pedido, se intenta aceptar_pedido para compatibilidad",
+                        resultadoAprobar.exceptionOrNull()
+                    )
+                    supabase.postgrest.rpc("aceptar_pedido", parametros)
+                }
+
+                _listaPedidos.value = _listaPedidos.value.map { pedido ->
+                    if (pedido.id == pedidoId && !pedido.esExtraordinario) {
+                        pedido.copy(estado = "ACEPTADO")
+                    } else {
+                        pedido
+                    }
+                }
                 cargarPedidos()
             } catch (e: Exception) {
-                Log.e("ADMIN", "Error aprobando pedido", e)
+                Log.e("ADMIN", "Error aprobando/aceptando pedido", e)
             }
         }
     }
