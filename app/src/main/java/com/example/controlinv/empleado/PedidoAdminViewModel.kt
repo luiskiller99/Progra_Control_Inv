@@ -189,16 +189,16 @@ class PedidoAdminViewModel : ViewModel() {
         }
     }
 
-    fun aceptarPedido(pedidoId: String) {
+    fun aprobarPedido(pedidoId: String) {
         viewModelScope.launch {
             try {
                 supabase.postgrest.rpc(
-                    "aceptar_pedido",
+                    "aprobar_pedido",
                     mapOf("p_pedido_id" to pedidoId)
                 )
                 cargarPedidos()
             } catch (e: Exception) {
-                Log.e("ADMIN", "Error aceptando pedido", e)
+                Log.e("ADMIN", "Error aprobando pedido", e)
             }
         }
     }
@@ -260,10 +260,8 @@ class PedidoAdminViewModel : ViewModel() {
     }
 }
 
-private fun JsonObject.stringOrNull(key: String): String? {
-    val value: JsonElement = this[key] ?: return null
-    return value.jsonPrimitive.contentOrNull
-}
+private fun JsonObject.stringOrNull(key: String): String? =
+    (this[key] as? JsonElement)?.jsonPrimitive?.contentOrNull
 
 private fun JsonObject.intOrNull(key: String): Int? =
     this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()

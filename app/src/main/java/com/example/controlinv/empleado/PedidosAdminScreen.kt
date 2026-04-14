@@ -97,7 +97,7 @@ enum class ExportacionPedidosTipo(
     TODOS("Todos", "todos"),
     PENDIENTES("Pendientes", "pendientes"),
     EXTRAORDINARIOS("Extraordinarios", "extraordinarios"),
-    ACEPTADOS("Aceptados", "aceptados"),
+    ACEPTADOS("Aprobados/Aceptados", "aprobados_aceptados"),
     RECHAZADOS("Rechazados", "rechazados")
 }
 
@@ -109,7 +109,10 @@ private fun filtrarPedidosPorTipo(
         !it.esExtraordinario && it.estado.equals("ENVIADO", ignoreCase = true)
     }
     PedidoFiltro.EXTRAORDINARIO -> pedidos.filter { it.esExtraordinario }
-    PedidoFiltro.ACEPTADO -> pedidos.filter { it.estado.equals("ACEPTADO", ignoreCase = true) }
+    PedidoFiltro.ACEPTADO -> pedidos.filter {
+        it.estado.equals("APROBADO", ignoreCase = true) ||
+            it.estado.equals("ACEPTADO", ignoreCase = true)
+    }
     PedidoFiltro.RECHAZADO -> pedidos.filter { it.estado.equals("RECHAZADO", ignoreCase = true) }
 }
 
@@ -365,7 +368,7 @@ fun PedidosAdminScreen(
                         Text("Extraordinarios")
                     }
                     TextButton(onClick = { filtro = PedidoFiltro.ACEPTADO }) {
-                        Text("Aceptados")
+                        Text("Aprobados")
                     }
                     TextButton(onClick = { filtro = PedidoFiltro.RECHAZADO }) {
                         Text("Rechazados")
@@ -418,7 +421,7 @@ fun PedidosAdminScreen(
                                                 accion = AccionPedidoExtraordinario.ACEPTAR
                                             )
                                         } else {
-                                            viewModel.aceptarPedido(pedido.id)
+                                            viewModel.aprobarPedido(pedido.id)
                                         }
                                     }
                                 },
@@ -568,7 +571,7 @@ fun PedidoItem(
                     Spacer(Modifier.width(8.dp))
 
                     Button(onClick = onAceptar) {
-                        Text("Aceptar")
+                        Text(if (pedido.esExtraordinario) "Aceptar" else "Aprobar")
                     }
                 }
             }
