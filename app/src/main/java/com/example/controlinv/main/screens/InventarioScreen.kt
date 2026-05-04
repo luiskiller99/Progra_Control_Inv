@@ -57,7 +57,7 @@ import com.example.controlinv.inventario.model.Inventario
 
 private val colCodigo = 90.dp
 private val colDescripcion = 180.dp
-private val colCantidad = 80.dp
+private val colCantidad = 110.dp
 private val colUnidad = 100.dp
 private val colClase = 100.dp
 private val colAcciones = 90.dp
@@ -326,6 +326,7 @@ fun InventarioRow(
     var cantidad by remember { mutableStateOf(item.cantidad?.toString() ?: "") }
     var unidad by remember { mutableStateOf(item.unidad ?: "") }
     var clase by remember { mutableStateOf(item.clasificacion ?: "") }
+    var mostrarDialogoSuma by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -335,7 +336,12 @@ fun InventarioRow(
     ) {
         CampoTabla(codigo, { codigo = it }, colCodigo)
         CampoTabla(descripcion, { descripcion = it }, colDescripcion)
-        CampoTabla(cantidad, { cantidad = it }, colCantidad)
+        CampoCantidad(
+            valor = cantidad,
+            onChange = { cantidad = it },
+            width = colCantidad,
+            onSumar = { mostrarDialogoSuma = true }
+        )
         CampoTabla(unidad, { unidad = it }, colUnidad)
         CampoTabla(clase, { clase = it }, colClase)
 
@@ -367,7 +373,93 @@ fun InventarioRow(
         }
     }
 
+    if (mostrarDialogoSuma) {
+        DialogoSumarCantidad(
+            cantidadActual = cantidad.toIntOrNull() ?: 0,
+            onConfirmar = { cantidadSumada ->
+                cantidad = cantidadSumada.toString()
+                mostrarDialogoSuma = false
+            },
+            onDismiss = { mostrarDialogoSuma = false }
+        )
+    }
+
     Divider()
+}
+
+@Composable
+fun CampoCantidad(
+    valor: String,
+    onChange: (String) -> Unit,
+    width: Dp,
+    onSumar: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.width(width),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            BasicTextField(
+                value = valor,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = onSumar,
+                modifier = Modifier.size(24.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+            ) {
+                Text("+")
+            }
+        }
+    }
+}
+
+@Composable
+fun DialogoSumarCantidad(
+    cantidadActual: Int,
+    onConfirmar: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var incremento by remember { mutableStateOf("") }
+    val cantidadIncremento = incremento.toIntOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sumar cantidad") },
+        text = {
+            OutlinedTextField(
+                value = incremento,
+                onValueChange = { incremento = it },
+                label = { Text("Cantidad a sumar") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirmar(cantidadActual + (cantidadIncremento ?: 0)) },
+                enabled = (cantidadIncremento ?: -1) >= 0
+            ) {
+                Text("Aplicar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
